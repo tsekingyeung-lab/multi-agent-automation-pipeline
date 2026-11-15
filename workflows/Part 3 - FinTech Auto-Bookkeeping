@@ -1,0 +1,120 @@
+{
+"name": "03 - Zero-Click FinTech Auto-Bookkeeping",
+"nodes": [
+{
+"parameters": {
+"rule": { "interval": [{ "field": "hours", "hoursInterval": 12 }] }
+},
+"id": "e481e27d-0182-4977-9f55-914d39f47177",
+"name": "12hr Schedule Trigger",
+"type": "n8n-nodes-base.scheduleTrigger",
+"typeVersion": 1.1,
+"position": [2864, 4112]
+},
+{
+"parameters": {
+"operation": "getAll",
+"limit": 10,
+"filters": {
+"q": "from:(notify@mox.com OR its_boc@bochk.com OR no-reply-payme@notification.hsbc.com.hk OR notification.hsbc.com.hk) -label:Processed newer_than:7d"
+}
+},
+"id": "5a1cc3e1-bcbb-41d8-a8c0-a483591e19de",
+"name": "Fetch Bank Emails",
+"type": "n8n-nodes-base.gmail",
+"typeVersion": 2.1,
+"position": [3088, 4112],
+"credentials": {
+"gmailOAuth2": {
+"id": "YOUR_GMAIL_CREDENTIAL_ID",
+"name": "Gmail account"
+}
+}
+},
+{
+"parameters": {
+"promptType": "define",
+"text": "=Sender: {{ $json.From }}\nSubject: {{$json.Subject }}\nBody: {{ $json.text \vert{}\vert{}$json.snippet }}",
+"options": {
+"systemMessage": "Extract 7 fields (Datetime, Merchant, Amount, Category, Payment Method, Note, Transaction Hash). Verify hash via check_existing_transactions before calling Append row."
+}
+},
+"id": "418d9952-b251-4398-b8fa-84999049cd6a",
+"name": "Financial AI Agent",
+"type": "@n8n/n8n-nodes-langchain.agent",
+"typeVersion": 1.6,
+"position": [3328, 4112]
+},
+{
+"parameters": {
+"descriptionType": "manual",
+"toolDescription": "Checks existing transaction hashes in Google Sheets to prevent duplicates.",
+"documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list" },
+"sheetName": { "__rl": true, "value": "gid=0", "mode": "list" }
+},
+"type": "n8n-nodes-base.googleSheetsTool",
+"typeVersion": 4.7,
+"position": [3440, 4320],
+"id": "0885bc7e-1fdc-42ce-9a9f-7e8a063339ff",
+"name": "check_existing_transactions",
+"credentials": {
+"googleSheetsOAuth2Api": {
+"id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+"name": "Google Sheets account"
+}
+}
+},
+{
+"parameters": {
+"operation": "append",
+"documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list" },
+"sheetName": { "__rl": true, "value": "gid=0", "mode": "list" },
+"columns": {
+"mappingMode": "defineBelow",
+"value": {
+"日期時間": "={{ $fromAI('datetime', , 'string') }}", "商戶/交易對象": "={{ $fromAI('merchant', , 'string') }}",
+"金額": "={{ $fromAI('amount', , 'string') }}", "交易類型": "={{ $fromAI('category', , 'string') }}",
+"支付方式": "={{ $fromAI('payment_method', , 'string') }}", "備註/原始通知": "={{ $fromAI('note', , 'string') }}",
+"交易ID/Hash": "={{ $fromAI('tx_hash', ``, 'string') }}"
+}
+}
+},
+"type": "n8n-nodes-base.googleSheetsTool",
+"typeVersion": 4.7,
+"position": [3616, 4320],
+"id": "40dc9a62-dc38-426c-823b-437bca32f36e",
+"name": "Append row",
+"credentials": {
+"googleSheetsOAuth2Api": {
+"id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+"name": "Google Sheets account"
+}
+}
+},
+{
+"parameters": {
+"operation": "addLabels",
+"messageId": "={{ $('Fetch Bank Emails').item.json.id }}",
+"labelIds": ["YOUR_GMAIL_LABEL_ID"]
+},
+"id": "8fcfd9ed-4d5a-467d-8295-3ef877878fdd",
+"name": "Mark Email as Processed",
+"type": "n8n-nodes-base.gmail",
+"typeVersion": 2.1,
+"position": [3600, 4112],
+"credentials": {
+"gmailOAuth2": {
+"id": "YOUR_GMAIL_CREDENTIAL_ID",
+"name": "Gmail account"
+}
+}
+}
+],
+"connections": {
+"12hr Schedule Trigger": { "main": [[{ "node": "Fetch Bank Emails", "type": "main", "index": 0 }]] },
+"Fetch Bank Emails": { "main": [[{ "node": "Financial AI Agent", "type": "main", "index": 0 }]] },
+"Financial AI Agent": { "main": [[{ "node": "Mark Email as Processed", "type": "main", "index": 0 }]] },
+"check_existing_transactions": { "ai_tool": [[{ "node": "Financial AI Agent", "type": "ai_tool", "index": 0 }]] },
+"Append row": { "ai_tool": [[{ "node": "Financial AI Agent", "type": "ai_tool", "index": 0 }]] }
+}
+}
