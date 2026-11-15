@@ -1,0 +1,167 @@
+{
+  "name": "06 - Food & Nutrition Vision Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "toolDescription": "功能:紀錄每日飲食內容,卡路里與三大營養素計算",
+        "text": "={{ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "# 工作規則\n### 處理流程：\n1. 詳細辨識圖片中的主要食物項目（最多 3 項，依熱量由高至低排序）。\n2. 同時參考使用者提供的 caption（說明文字），若有 caption 則優先參考其內容來輔助判斷食物名稱與份量。\n3. 「整份食物描述」為主要食物項目組成的簡短字串，若超過 20 個字則只取前 20 個字。\n4. 估算每項主要食物的重量（單位：克）。\n5. 估算整份食物的總熱量（千卡）與三大營養素總重（克）。\n6. 先使用 \"SaveFood\" 工具。\n7. 再使用 \"CalFood\" 工具。\n8. 按照以下格式輸出：\n\n這是一份<整份食物描述> 包含：\n- [食物項目1] 約 [重量]g\n- [食物項目2] 約 [重量]g\n- [食物項目3] 約 [重量]g（如有）\n- 🔥熱量：xxx kcal\n- 🍚碳水化合物：xx g\n- 🍗蛋白質：xx g\n- 🥑脂肪：xx g\n\n[今日飲食總結]\n- 🔥總熱量：xxx kcal\n- 🍚碳水化合物：xx g\n- 🍗蛋白質：xx g\n- 🥑脂肪：xx g"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 3,
+      "position": [
+        400,
+        200
+      ],
+      "id": "food-agent-06",
+      "name": "FoodAgent"
+    },
+    {
+      "parameters": {
+        "model": "deepseek-chat",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+      "typeVersion": 1,
+      "position": [
+        220,
+        420
+      ],
+      "id": "food-llm-06",
+      "name": "DeepSeek Chat Model",
+      "credentials": {
+        "deepSeekApi": {
+          "id": "YOUR_DEEPSEEK_CREDENTIAL_ID",
+          "name": "DeepSeek account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "=#功能:\n- 接收下方json格式的食物資料,並進行資料儲存至google sheets (insert a row)\n\n# json格式的食物資料\n{\n\"date\":\"{{ $now.format('yyyy-MM-dd') }}\",\n\"name\":<整份食物>的食物描述,\n\"calories\":kcal,\n\"carbohydrate\":g,\n\"protein\":g,\n\"fat\":g\n}",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "個人飲食日誌",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "date": "={{ $fromAI('date', ``, 'string') }}",
+            "name": "={{ $fromAI('name', ``, 'string') }}",
+            "calories": "={{ $fromAI('calories', ``, 'string') }}",
+            "carbohydrate": "={{ $fromAI('carbohydrate', ``, 'string') }}",
+            "protein": "={{ $fromAI('protein', ``, 'string') }}",
+            "fat": "={{ $fromAI('fat', ``, 'string') }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        420,
+        420
+      ],
+      "id": "food-save-06",
+      "name": "SaveFood",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "=# 使用此工具,加總今日攝取的總熱量和3大營養素\n- 用法:使用今日日期\"{{ $now.format('yyyy-MM-dd') }}\",於google sheet中取得今日所攝取的食物項目資料並加總今日攝取的總熱量和3大營養素",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "個人飲食日誌",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        620,
+        420
+      ],
+      "id": "food-cal-06",
+      "name": "CalFood",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "DeepSeek Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "FoodAgent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveFood": {
+      "ai_tool": [
+        [
+          {
+            "node": "FoodAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CalFood": {
+      "ai_tool": [
+        [
+          {
+            "node": "FoodAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true,
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

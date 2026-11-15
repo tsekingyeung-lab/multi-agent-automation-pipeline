@@ -1,0 +1,361 @@
+{
+  "name": "04 - Expense & Shift Sync Sub-Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "toolDescription": "功能：處理日常消費記帳、管理薪金預算、讀取每月財務摘要，以及透過 Google Calendar 自動更新並同步返工紀錄（防止重覆遺漏）。",
+        "text": "={{ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "=# 工作規則\n你是專業記帳、薪金預算與儲蓄目標管理助理。\n1. 【新增消費記帳】：提取商戶、金額、分類，呼叫 SaveExpense 寫入「自動記帳資料庫」，再呼叫 ReadExpense 讀取「每月財務摘要」回報。\n2. 【查詢每月財務摘要】：呼叫 ReadExpense 讀取「每月財務摘要」第 2 列數據。回答時，請【嚴格】使用以下格式呈現：\n\n月份：[填入當前月份]月\n按分類 工作名稱：兼職工作 💼\n收入／開支：$[總累計收入] / $[總累計開支]\n累計：$[本月淨結餘與剩餘可用預算]\n\n3. 【修改薪金預算/儲蓄目標】：呼叫 UpdateBudgetGoal 更新「每月財務摘要」（匹配 ID 填寫 `config_row`），並回報最新狀態。\n4. 【自動更新返工紀錄】：當收到使用者指令「更新返工紀錄」時，必須執行以下標準作業流程：\n   - 第一步：呼叫 GetCalendarEvents 搜尋本月 Google Calendar 上的返工行程（關鍵字如 Shift、Part-time，設定當月第一天到最後一天的 RFC3339 範圍）。\n   - 第二步：呼叫 ReadWorkRecords 讀取試算表「返工紀錄」分頁中現有的所有資料。\n   - 第三步：仔細進行交叉比對（依據日期與工作名稱），找出 Calendar 有但「返工紀錄」沒有的新班次，確保絕對不重覆、不遺漏。\n   - 第四步：針對每一個未記錄的新班次，逐一呼叫 LogWorkShift 將其寫入「返工紀錄」。\n   - 第五步：完成寫入後，回報成功同步了幾筆紀錄，並套用第 2 點的【查詢每月財務摘要】專屬格式輸出最新狀態。"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 3,
+      "position": [
+        400,
+        200
+      ],
+      "id": "exp-agent-04",
+      "name": "ExpenseAgent"
+    },
+    {
+      "parameters": {
+        "model": "deepseek/deepseek-v4-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        200,
+        420
+      ],
+      "id": "exp-llm-04",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "YOUR_OPENROUTER_CREDENTIAL_ID",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "將單筆消費紀錄寫入自動記帳資料庫",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "自動記帳資料庫",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "日期時間": "={{ $fromAI('datetime', '交易日期時間 (格式: yyyy-MM-dd HH:mm:ss)', 'string') }}",
+            "商戶/交易對象": "={{ $fromAI('merchant', '商戶或交易對象名稱', 'string') }}",
+            "金額": "={{ $fromAI('amount', '消費金額 (數字)', 'string') }}",
+            "交易類型": "={{ $fromAI('category', '交易類型', 'string') }}",
+            "支付方式": "={{ $fromAI('payment_method', '支付方式', 'string') }}",
+            "備註/原始通知": "={{ $fromAI('note', '備註或原始通知內容', 'string') }}",
+            "交易ID/Hash": "={{ $fromAI('tx_hash', '唯一交易ID或Hash', 'string') }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        360,
+        420
+      ],
+      "id": "exp-save-04",
+      "name": "SaveExpense",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "讀取「每月財務摘要」分頁的所有全局設定，包含「每月薪金預算」、「目標儲蓄」、「每次返工日薪/時薪」、「總累計收入」、「總累計開支」與「目前已返幾多工」。",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "每月財務摘要",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        500,
+        420
+      ],
+      "id": "exp-read-04",
+      "name": "ReadExpense",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "更新「每月財務摘要」分頁中的「每月薪金預算 ($)」、「目標儲蓄 ($)」及「每次返工日薪/時薪 ($)」。必須以 ID 欄位填寫 `config_row` 作為匹配來更新。",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "每月財務摘要",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ID": "={{ $fromAI('match_id', '匹配欄位 ID，必須填寫：config_row', 'string') }}",
+            "每月薪金預算 ($)": "={{ $fromAI('salary_budget', '每月薪金預算 ($)', 'string') }}",
+            "目標儲蓄 ($)": "={{ $fromAI('saving_goal', '目標儲蓄 ($)', 'string') }}",
+            "每次返工日薪/時薪 ($)": "={{ $fromAI('wage_per_shift', '每次返工日薪或時薪 ($)', 'string') }}"
+          },
+          "matchingColumns": [
+            "ID"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        640,
+        420
+      ],
+      "id": "exp-upd-04",
+      "name": "UpdateBudgetGoal",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "搜尋 Google Calendar 上的返工行程。必須傳入搜尋關鍵字 (query) 與時間範圍 (timeMin, timeMax)。",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "primary",
+          "mode": "list"
+        },
+        "returnAll": true,
+        "options": {
+          "timeMin": "={{ $fromAI('timeMin', '開始時間 (RFC3339 格式)', 'string') }}",
+          "timeMax": "={{ $fromAI('timeMax', '結束時間 (RFC3339 格式)', 'string') }}",
+          "query": "={{ $fromAI('query', '搜尋關鍵字 (如 Shift 或 Part-time)', 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.1,
+      "position": [
+        780,
+        420
+      ],
+      "id": "exp-cal-04",
+      "name": "GetCalendarEvents",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_GOOGLE_CALENDAR_CREDENTIAL_ID",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "讀取試算表「返工紀錄」分頁的現有資料，用於比對 Google Calendar 行程，避免重覆寫入班次。",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "返工紀錄",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        920,
+        420
+      ],
+      "id": "exp-rwork-04",
+      "name": "ReadWorkRecords",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "將新班次寫入「返工紀錄」分頁（包含日期、工作名稱/地點、返工日數/時數、預計人工 ($)、備註）。",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "返工紀錄",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "日期": "={{ $fromAI('work_date', '返工日期 (yyyy-MM-dd)', 'string') }}",
+            "工作名稱/地點": "={{ $fromAI('job_name', '工作名稱或地點', 'string') }}",
+            "返工日數/時數": "={{ $fromAI('shifts_or_hours', '返工日數或時數 (純數字)', 'string') }}",
+            "預計人工 ($)": "={{ $fromAI('estimated_pay', '預計人工 ($)', 'string') }}",
+            "備註": "={{ $fromAI('work_note', '備註說明', 'string') }}"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1060,
+        420
+      ],
+      "id": "exp-lwork-04",
+      "name": "LogWorkShift",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "ExpenseAgent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SaveExpense": {
+      "ai_tool": [
+        [
+          {
+            "node": "ExpenseAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ReadExpense": {
+      "ai_tool": [
+        [
+          {
+            "node": "ExpenseAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "UpdateBudgetGoal": {
+      "ai_tool": [
+        [
+          {
+            "node": "ExpenseAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GetCalendarEvents": {
+      "ai_tool": [
+        [
+          {
+            "node": "ExpenseAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ReadWorkRecords": {
+      "ai_tool": [
+        [
+          {
+            "node": "ExpenseAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LogWorkShift": {
+      "ai_tool": [
+        [
+          {
+            "node": "ExpenseAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true,
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

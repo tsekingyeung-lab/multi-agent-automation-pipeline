@@ -1,0 +1,133 @@
+{
+  "name": "07 - Web Research & Weather Sub-Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "toolDescription": "A research agent for all research actions (News, Web Search, and Local Weather)",
+        "text": "={{ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "=# Overview\nYou are a web research assistant. Your responsibilities include conducting quick web searches, performing deeper research, and retrieving current weather information.\n\n**Web Search & Research**\n- Use **Tavily** for quick factual lookups, recent news, or verifying specific pieces of information.\n\n**Weather Information**\n- Use **Open Weather Map** to retrieve current weather data, including temperature, conditions, and forecasts for a given location.\n\nAlways prioritize clarity, credibility, and helpfulness in your responses."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 2.2,
+      "position": [
+        400,
+        200
+      ],
+      "id": "search-agent-07",
+      "name": "Search Agent"
+    },
+    {
+      "parameters": {
+        "model": "deepseek/deepseek-v4-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        220,
+        420
+      ],
+      "id": "search-llm-07",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "YOUR_OPENROUTER_CREDENTIAL_ID",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "={{ $fromAI('Query', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavilyTool",
+      "typeVersion": 1,
+      "position": [
+        420,
+        420
+      ],
+      "id": "search-tavily-07",
+      "name": "Tavily",
+      "credentials": {
+        "tavilyApi": {
+          "id": "YOUR_TAVILY_CREDENTIAL_ID",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "cityName": "={{ $fromAI('City', 'Hong Kong', 'string') }}",
+        "language": "zh_tw"
+      },
+      "type": "n8n-nodes-base.openWeatherMapTool",
+      "typeVersion": 1,
+      "position": [
+        620,
+        420
+      ],
+      "id": "search-weather-07",
+      "name": "OpenWeatherMap",
+      "credentials": {
+        "openWeatherMapApi": {
+          "id": "YOUR_OPENWEATHER_CREDENTIAL_ID",
+          "name": "OpenWeatherMap account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Search Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tavily": {
+      "ai_tool": [
+        [
+          {
+            "node": "Search Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenWeatherMap": {
+      "ai_tool": [
+        [
+          {
+            "node": "Search Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true,
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

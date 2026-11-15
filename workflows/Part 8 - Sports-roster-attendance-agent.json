@@ -1,0 +1,168 @@
+{
+  "name": "08 - Sports Team Roster & Attendance Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "toolDescription": "=# 功能:\n從 Google 試算表中查詢聯賽賽程、對手、比賽日期、時間與主客場狀態，以及更新球員考勤點名。",
+        "text": "={{ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "你是一位專門管理運動球隊的考勤助理。\n\n當收到 Telegram 的賽事點名/陣容訊息時，請嚴格按照以下步驟執行：\n\n1. 呼叫 【Read】 工具，取得試算表中「Attendance」的所有球員姓名名單。\n2. 分析 Telegram 訊息內容，確認比賽場次標題（例如：\"Match 1 (League)\"），並比對全隊名單中每位球員的出席狀態（出席為 \"✅\"，未出席為 \"❌\"）。\n3. 對於名冊中的每位球員，呼叫 【Attendance】 工具進行更新，傳入以下參數：\n   - playerName: 球員姓名\n   - matchColumn: 比賽欄位標題\n   - status: 出席狀態（✅ 或 ❌）\n4. 於 Telegram 簡短回覆更新結果（統計出席與缺席人數）。"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 3,
+      "position": [
+        400,
+        200
+      ],
+      "id": "roster-agent-08",
+      "name": "Sports Roster Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        420
+      ],
+      "id": "roster-llm-08",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GEMINI_CREDENTIAL_ID",
+          "name": "Google Gemini API account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "功能：從 Google 試算表中讀取聯賽賽程、比賽日期、對手、時間以及球員的出席率與出席狀況。",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ROSTER_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $fromAI('Sheet', 'Attendance,Schedule', 'string') }}",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        420,
+        420
+      ],
+      "id": "roster-read-08",
+      "name": "Read",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "用於更新試算表中的球員考勤打勾/打叉。",
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_ROSTER_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Attendance",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Player Name": "={{ $fromAI('playerName', '球員姓名') }}",
+            "Match 1 (League)": "={{ $fromAI('match_1', '', 'string') }}",
+            "Match 2 (League)": "={{ $fromAI('match_2', '', 'string') }}",
+            "Match 3 (Friendly)": "={{ $fromAI('match_3', '', 'string') }}"
+          },
+          "matchingColumns": [
+            "Player Name"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        620,
+        420
+      ],
+      "id": "roster-att-08",
+      "name": "Attendance",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Sports Roster Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read": {
+      "ai_tool": [
+        [
+          {
+            "node": "Sports Roster Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Attendance": {
+      "ai_tool": [
+        [
+          {
+            "node": "Sports Roster Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true,
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "tags": []
+}

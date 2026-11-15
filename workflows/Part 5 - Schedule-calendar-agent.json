@@ -1,0 +1,238 @@
+{
+  "name": "05 - Schedule CRUD & Multi-Calendar Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "toolDescription": "功能：處理使用者行程、事件排程、提醒、Google 日曆(行事曆)操作。",
+        "text": "={{ $fromAI('Prompt__User_Message_', ``, 'string') }}",
+        "options": {
+          "systemMessage": "=# 工作規則\n1. 解析 User Message，判斷要使用哪個 Google Calendar Tool（Create、Query、Update、Delete）。\n2. 判斷並傳送對應的行事曆 ID 和相關資料給 Tool：\n若為一般個人行程：傳送行事曆 ID YOUR_PRIMARY_EMAIL@gmail.com。\n若明確提及或查詢 Shared Calendar：傳送行事曆 ID YOUR_SHARED_CALENDAR_ID@import.calendar.google.com（⚠️ 嚴格限制：Shared Calendar 僅能呼叫 Query，絕對不可呼叫 Create、Update、Delete）。\n\n# 核心原則：新增與修改皆必須設定 Color_ID\n建立 (Create) 或更新 (Update) 行程時，必須同時設定對應的 Color_ID（保持標題簡潔）：\n- 伴侶專屬行程 ➡️ Color_ID: \"5\" (黃色)\n- 個人專屬行程 ➡️ Color_ID: \"2\" (綠色)\n- 共同參與行程 ➡️ Color_ID: \"9\" (藍色)\n- 固定紀念日 ➡️ Color_ID: \"4\" (粉紅/紅色)\n\n# 各 Tool 執行細節\n1. Create (新增)：計算 Start/End 時間，帶入對應的 Color_ID 與 Description。\n2. Update (修改顏色/內容)：先呼叫 Query 找 Event_ID，再呼叫 Update 傳入 Event_ID 並更新 Color_ID。\n3. Query (查詢)：Before 時間加 1 分鐘，After 時間減 1 分鐘以完整覆蓋區間。\n4. 無結束時間時：預設結束時間為開始時間 1 小時後。重複行程於 Description 寫入 RRULE。"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agentTool",
+      "typeVersion": 3,
+      "position": [
+        400,
+        200
+      ],
+      "id": "sched-agent-05",
+      "name": "ScheduleAgent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        420
+      ],
+      "id": "sched-llm-05",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "YOUR_GEMINI_CREDENTIAL_ID",
+          "name": "Google Gemini API account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Create an event in Google Calendar",
+        "calendar": {
+          "__rl": true,
+          "value": "={{ $fromAI('Calendar', 'YOUR_PRIMARY_EMAIL@gmail.com', 'string') }}",
+          "mode": "id"
+        },
+        "start": "={{ $fromAI('Start', ``, 'string') }}",
+        "end": "={{ $fromAI('End', ``, 'string') }}",
+        "useDefaultReminders": "={{ $fromAI('Use_Default_Reminders', ``, 'boolean') }}",
+        "additionalFields": {
+          "color": "={{ $fromAI('Color_ID', 'Google Calendar Color ID (1-11)', 'string') }}",
+          "description": "={{ $fromAI('Description', ``, 'string') }}",
+          "location": "={{ $fromAI('Location', ``, 'string') }}",
+          "summary": "={{ $fromAI('Summary', ``, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        380,
+        420
+      ],
+      "id": "sched-create-05",
+      "name": "Create",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_GOOGLE_CALENDAR_CREDENTIAL_ID",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get many events in Google Calendar",
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "={{ $fromAI('Calendar', ``, 'string') }}",
+          "mode": "id"
+        },
+        "returnAll": "={{ $fromAI('Return_All', ``, 'boolean') }}",
+        "timeMin": "={{ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        540,
+        420
+      ],
+      "id": "sched-query-05",
+      "name": "Query",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_GOOGLE_CALENDAR_CREDENTIAL_ID",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Update an event in Google Calendar",
+        "operation": "update",
+        "calendar": {
+          "__rl": true,
+          "value": "={{ $fromAI('Calendar', ``, 'string') }}",
+          "mode": "id"
+        },
+        "eventId": "={{ $fromAI('Event_ID', ``, 'string') }}",
+        "useDefaultReminders": "={{ $fromAI('Use_Default_Reminders', ``, 'boolean') }}",
+        "updateFields": {
+          "color": "={{ $fromAI('Color_ID', 'Google Calendar Color ID (1-11)', 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        700,
+        420
+      ],
+      "id": "sched-update-05",
+      "name": "Update",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_GOOGLE_CALENDAR_CREDENTIAL_ID",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Delete an event in Google Calendar",
+        "operation": "delete",
+        "calendar": {
+          "__rl": true,
+          "value": "={{ $fromAI('Calendar', ``, 'string') }}",
+          "mode": "id"
+        },
+        "eventId": "={{ $fromAI('Event_ID', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        860,
+        420
+      ],
+      "id": "sched-delete-05",
+      "name": "Delete",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "YOUR_GOOGLE_CALENDAR_CREDENTIAL_ID",
+          "name": "Google Calendar account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "ScheduleAgent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create": {
+      "ai_tool": [
+        [
+          {
+            "node": "ScheduleAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query": {
+      "ai_tool": [
+        [
+          {
+            "node": "ScheduleAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update": {
+      "ai_tool": [
+        [
+          {
+            "node": "ScheduleAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete": {
+      "ai_tool": [
+        [
+          {
+            "node": "ScheduleAgent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "timeSavedMode": "fixed",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": true,
+    "saveDataSuccessExecution": "all"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "YOUR_INSTANCE_ID"
+  },
+  "nodeGroups": [],
+  "tags": []
+}
