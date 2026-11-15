@@ -12,7 +12,6 @@
 <p align="center">
   <a href="#-english-documentation"><b>🇬🇧 English Documentation</b></a> •
   <a href="#-繁體中文說明文件"><b>🇭🇰 繁體中文說明文件</b></a> •
-  <a href="#-how-to-create-a-workflows-folder-on-github"><b>📁 How to Create Folder on GitHub</b></a> •
   <a href="#-security--privacy-audit"><b>🔒 Privacy Audit</b></a>
 </p>
 
@@ -170,36 +169,6 @@ graph LR
 3. **第三部分：無感金融自動記帳管線 (`03-fintech-auto-bookkeeping.json`)**
    * **銀行通知自動解析：** 定期抓取銀行與電子錢包（Mox、BOCHK、HSBC、PayMe 等）交易通知信件。
    * **防重複寫入機制：** 自動生成唯一 `交易ID/Hash`，寫入前先檢視試算表既有紀錄，確認無重複後才寫入並標記郵件為「已記帳」。
-
----
-
-## 📁 How to Create a `workflows/` Folder on GitHub
-### 如何在 GitHub 建立 `workflows/` 資料夾並分類上傳
-
-GitHub's web interface does not have a direct "New Folder" button, but you can create folders easily using either method below:
-
-### Method A: Directly on the GitHub Website (Fastest)
-1. Open your repository `tsekingyeung-lab/multi-agent-automation-pipeline` on GitHub.
-2. Click **Add file** $\rightarrow$ **Create new file**.
-3. In the **Name your file...** input box at the top, type `workflows/` — as soon as you type the slash `/`, GitHub automatically converts `workflows` into a directory!
-4. Complete the filename as `workflows/00-full-multi-agent-pipeline.json`, paste the JSON content from the file generated here, and click **Commit changes**.
-5. Repeat or click into the newly created `workflows/` folder and click **Add file** $\rightarrow$ **Upload files** to drag-and-drop `01`, `02`, and `03`.
-
-### Method B: Via Local Folder Drag-and-Drop
-1. On your computer, create a folder named `workflows` and save the 4 JSON files (`00` through `03`) inside it.
-2. On your GitHub repository page, click **Add file** $\rightarrow$ **Upload files**.
-3. Drag the entire `workflows` folder from your computer into the browser window and click **Commit changes**.
-
-```text
-📦 multi-agent-automation-pipeline
- ┣ 📂 workflows
- ┃ ┣ 📜 00-full-multi-agent-pipeline.json          # Complete All-in-One Workflow
- ┃ ┣ 📜 01-central-router-and-agents.json          # Part 1: Telegram Router + 5 Sub-Agents
- ┃ ┣ 📜 02-daily-briefing-and-habit-tracker.json   # Part 2: Morning Briefing, News & Habit Tracker
- ┃ ┗ 📜 03-fintech-auto-bookkeeping.json           # Part 3: Automated Bank Alert Bookkeeping
- ┣ 📜 docker-compose.yml                           # Self-Hosted n8n + Caddy Stack
- ┗ 📜 README.md                                    # Bilingual Documentation
-```
 
 ---
 
