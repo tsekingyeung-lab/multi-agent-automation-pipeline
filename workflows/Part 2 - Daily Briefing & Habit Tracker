@@ -1,0 +1,85 @@
+{
+"name": "02 - Daily Briefing, News Digest & Habit Tracker",
+"nodes": [
+{
+"parameters": {
+"rule": { "interval": [{ "field": "cronExpression", "expression": "0 6 * * *" }] }
+},
+"id": "550d09da-09cc-4d2b-89aa-fbc1550ebe99",
+"name": "06:00 Morning Briefing Trigger",
+"type": "n8n-nodes-base.scheduleTrigger",
+"typeVersion": 1.2,
+"position": [3184, 4512]
+},
+{
+"parameters": {
+"rule": { "interval": [{ "field": "cronExpression", "expression": "0 12 * * *" }] }
+},
+"id": "e136a9c5-4612-493e-84c8-6d5d7e76c7f3",
+"name": "12:00 News Digest Trigger",
+"type": "n8n-nodes-base.scheduleTrigger",
+"typeVersion": 1.2,
+"position": [3184, 4704]
+},
+{
+"parameters": {
+"rule": { "interval": [{ "field": "cronExpression", "expression": "30 22 * * *" }] }
+},
+"id": "1ce91b3a-f9e2-4fb2-ab19-7794c6af528a",
+"name": "22:30 Evening Check-in Trigger",
+"type": "n8n-nodes-base.scheduleTrigger",
+"typeVersion": 1.2,
+"position": [3184, 4864]
+},
+{
+"parameters": {
+"promptType": "define",
+"text": "={{ $json.chatInput }}",
+"options": {
+"systemMessage": "Execute Mode 1 (06:00 Morning Weather, Calendar & Verse Briefing), Mode 2 (12:00 Categorized News Digest with pagination), Mode 3 (22:30 Habit Prompt), or Mode 4 (Save verbatim journal & habit metrics to Google Sheets)."
+}
+},
+"id": "33b202b0-30a0-4d45-ace7-4253d38397d4",
+"name": "Daily AI Agent",
+"type": "@n8n/n8n-nodes-langchain.agent",
+"typeVersion": 1.7,
+"position": [4048, 4544]
+},
+{
+"parameters": {
+"descriptionType": "manual",
+"toolDescription": "Appends daily habit and reflection entries to the Habit_Tracker sheet.",
+"operation": "append",
+"documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list" },
+"sheetName": { "__rl": true, "value": "Habit_Tracker", "mode": "name" },
+"columns": {
+"mappingMode": "defineBelow",
+"value": {
+"Date": "={{ $now.format('yyyy-MM-dd') }}",
+"與主對話": "={{ $fromAI('talk_with_god', 'Devotional reflection', 'string') }}",
+"讀經／書 (min)": "={{ $fromAI('reading_minutes', 'Reading minutes', 'string') }}",
+"心情 (1-10)": "={{ $fromAI('mood_score', 'Mood score (1-10)', 'string') }}",
+"今日發生咩事 (完整紀錄)": "={{ $fromAI('what_happened_today', 'Full verbatim journal entry', 'string') }}"
+}
+}
+},
+"id": "1a6de17d-ad93-4595-8842-4cd409027025",
+"name": "Habit_Tracker",
+"type": "n8n-nodes-base.googleSheetsTool",
+"typeVersion": 4.7,
+"position": [4352, 4784],
+"credentials": {
+"googleSheetsOAuth2Api": {
+"id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+"name": "Google Sheets account"
+}
+}
+}
+],
+"connections": {
+"06:00 Morning Briefing Trigger": { "main": [[{ "node": "Daily AI Agent", "type": "main", "index": 0 }]] },
+"12:00 News Digest Trigger": { "main": [[{ "node": "Daily AI Agent", "type": "main", "index": 0 }]] },
+"22:30 Evening Check-in Trigger": { "main": [[{ "node": "Daily AI Agent", "type": "main", "index": 0 }]] },
+"Habit_Tracker": { "ai_tool": [[{ "node": "Daily AI Agent", "type": "ai_tool", "index": 0 }]] }
+}
+}
