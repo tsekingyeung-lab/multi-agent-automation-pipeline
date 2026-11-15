@@ -1,0 +1,1742 @@
+{
+"name": "終極 AI Agent 記帳與返工管理系統",
+"nodes": \[
+{
+"parameters": {
+"content": "# Main Agent & Central Router\\n整合 Telegram 唯一入口、圖片辨識、Switch 分流與 Daily AI Agent",
+"height": 620,
+"width": 920
+},
+"type": "n8n-nodes-base.stickyNote",
+"typeVersion": 1,
+"position": \[
+3472,
+4976
+\],
+"id": "86bea592-2519-4d39-9350-2090b930a665",
+"name": "Sticky Note"
+},
+{
+"parameters": {
+"updates": \[
+"message"
+\],
+"additionalFields": {}
+},
+"type": "n8n-nodes-base.telegramTrigger",
+"typeVersion": 1.5,
+"position": \[
+3184,
+5280
+\],
+"id": "e3cd3b95-6b5a-4e94-aa68-a0fbf52765a4",
+"name": "Telegram Trigger1",
+"webhookId": "YOUR_TELEGRAM_WEBHOOK_ID",
+"credentials": {
+"telegramApi": {
+"id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+"name": "Telegram account"
+}
+}
+},
+{
+"parameters": {
+"conditions": {
+"options": {
+"caseSensitive": true,
+"leftValue": "",
+"typeValidation": "loose",
+"version": 3
+},
+"conditions": \[
+{
+"id": "4d61d6d0-c111-4d72-9617-a5e0a47bc287",
+"leftValue": "={{ \$json.message.photo }}",
+"rightValue": "",
+"operator": {
+"type": "boolean",
+"operation": "exists",
+"singleValue": true
+}
+}
+\],
+"combinator": "and"
+},
+"looseTypeValidation": true,
+"options": {}
+},
+"type": "n8n-nodes-base.if",
+"typeVersion": 2.3,
+"position": \[
+3392,
+5280
+\],
+"id": "bbae06c5-8a8e-4de2-9357-d62d95a5836e",
+"name": "If Photo Exists"
+},
+{
+"parameters": {
+"rules": {
+"values": \[
+{
+"conditions": {
+"options": {
+"caseSensitive": false,
+"leftValue": "",
+"typeValidation": "strict",
+"version": 2
+},
+"conditions": \[
+{
+"id": "habit_checkin_rule",
+"leftValue": "={{ $json.message.text || '' }}",
+"rightValue": "(與主對話|靈修|禱告|運動|讀經|睇書|閱讀|心情|評分|今日發生|日記|打卡|簽到|晨報|新聞|^\\s*(more|continue|contiune|更多|繼續)\\s*$)",
+"operator": {
+"type": "string",
+"operation": "regex"
+}
+}
+\],
+"combinator": "and"
+},
+"renameOutput": true,
+"outputKey": "習慣簽到/晨報/新聞/More"
+},
+{
+"conditions": {
+"options": {
+"caseSensitive": true,
+"leftValue": "",
+"typeValidation": "strict",
+"version": 2
+},
+"conditions": \[
+{
+"id": "football_rule",
+"leftValue": "={{ \$json.message.text || '' }}",
+"rightValue": "(足球|陣容|點名|聯賽|友賽|出席|鴻恩堂|青怡|慈光|建民堂|敬拜會|match)",
+"operator": {
+"type": "string",
+"operation": "regex"
+}
+}
+\],
+"combinator": "and"
+},
+"renameOutput": true,
+"outputKey": "足球隊指令"
+}
+\]
+},
+"options": {
+"fallbackOutput": "extra"
+}
+},
+"type": "n8n-nodes-base.switch",
+"typeVersion": 3.2,
+"position": \[
+3568,
+5280
+\],
+"id": "f30127ea-e2a1-40ab-87b3-62d46cb21e43",
+"name": "Switch (中央路由器)"
+},
+{
+"parameters": {
+"resource": "file",
+"fileId": "={{ \$json.message.photo\[$json.message.photo.length - 1\].file_id }}",
+"additionalFields": {}
+},
+"type": "n8n-nodes-base.telegram",
+"typeVersion": 1.2,
+"position": \[
+3616,
+5168
+\],
+"id": "6650e80d-22bf-47d9-b80f-931e46e997ab",
+"name": "Get a file1",
+"webhookId": "YOUR_TELEGRAM_FILE_WEBHOOK_ID",
+"credentials": {
+"telegramApi": {
+"id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+"name": "Telegram account"
+}
+}
+},
+{
+"parameters": {
+"promptType": "define",
+"text": "=# 輸出格式規則 (Telegram HTML 專用)\\n1. 嚴禁使用 Markdown 標題符號（如 ###、##、#）。\\n2. 嚴禁使用 Markdown 表格（如 | --- | --- |）。表格內容請改用「項目清單」排列。\\n3. 強制使用 Telegram 支援的 HTML 標籤進行排版：\\n   - 粗體使用 文字（取代 **文字**）\\n   - 斜體使用 文字\\n   - 引用區塊使用 提示文字\\n4. 清單項目（- 或 1.）前後請勿插入多餘的空行與換行符號。",
+"options": {
+"systemMessage": "=# 概覽\\n你是終極個人助理（具備視覺分析能力）。請分析傳入的圖片與說明文字，並呼叫正確的工具處理。\\n\\n# 圖片處理規則\\n1. 食物/餐點照片 -> 呼叫 FoodAgent 工具。\\n2. 行程/日曆/時間表/活動照片 -> 呼叫 ScheduleAgent 工具，將解析出的日期時間與活動資訊完整傳給 ScheduleAgent。\\n3. 收據/帳單/消費截圖/付款畫面 -> 呼叫 ExpenseAgent 工具進行自動記帳與統計。\\n4. 輸出語言一律使用繁體中文。",
+"maxIterations": 10,
+"returnIntermediateSteps": true,
+"passthroughBinaryImages": true,
+"enableStreaming": false
+}
+},
+"id": "00873e32-9230-44ab-9e0e-ec9a60b9576d",
+"name": "AI Agent (Vision)",
+"type": "@n8n/n8n-nodes-langchain.agent",
+"typeVersion": 3.1,
+"position": \[
+3808,
+5168
+\],
+"onError": "continueErrorOutput"
+},
+{
+"parameters": {
+"promptType": "define",
+"text": "=使用者的聊天或提問：\\n「{{ \$json.message.text || $json.message.caption || \"（無文字訊息）\" }}」\n\n請根據系統規則與工具選擇適當方式處理並親切回覆。",
+"options": {
+"systemMessage": "=# 概覽\n你是終極個人助理。你的工作是將使用者的查詢傳送給正確的工具。\n\n# 背景資訊\n地區：香港\n目前時間：{{ $now.setZone('Asia/Hong_Kong').toFormat('yyyy-MM-dd HH:mm:ss') }}\n\n## 工具\n- Think：用於深入思考或當你卡住時使用\n- Search Agent：使用此工具進行網路研究、查詢即時新聞（包含三大分類：世界大事、AI & technology、Hong Kong）或取得目前香港天氣資訊\n- ScheduleAgent：用於處理行程、會議、提醒、查看日程、建立／修改／刪除／查詢 Google 日曆事件\n- FoodAgent：用於處理食物相關查詢與熱量統計（寫入與讀取「個人飲食日誌」分頁）\n- Football Agent：用於處理榮恩足球隊與Kow聯教會足球聯賽的賽程查詢、新增賽事，以及解析與自動更新球員陣容與出席名單（Attendance）。\n- ExpenseAgent：用於處理日常消費記帳、查詢今日或本月花費、設定或查詢「薪金預算」、「儲幾多$ (儲蓄目標)」、記錄返工工數，以及計算「需返幾多工」以達成儲蓄目標 (Saving Goal)。\n\n# 輸出與對話規則\n1. 當問題涉及行程、會議、提醒、查看日程、建立／修改／刪除／查詢日曆事件時，直接使用 \"ScheduleAgent\" 工具，不要再請使用者確認。\n2. 當問題涉及足球賽程查詢、新增球隊比賽、或是傳送球員陣容與出席點名（如 match day 格式）時，直接使用 \"Football Agent\" 工具。\n3. 當問題涉及記帳、消費紀錄、買東西花費、查詢開支、薪金預算、儲幾多$（儲蓄目標）或計算要返幾多工時，直接使用 "ExpenseAgent" 工具。\\n4. 當問題涉及新聞查詢時，使用 "Search Agent" 工具搜尋並分為三大分類：【世界大事】、【AI & technology】、【Hong Kong】，每個分類挑選 3 則新聞；若使用者輸入 "more"、"continue"、"contiune"、"更多" 或 "繼續"，請檢視對話記憶中已顯示過的新聞，再搜尋並列出接下來全新的 3 則新聞。\\n5. 優先使用工具（tools）。\\n6. 輸出語言一律使用繁體中文。\\n7. 語氣設定：請用自然、親切的語氣回覆，絕對不要提及或稱呼自己為「AI」、「語言模型」或「機器人」。\\n\\n# Telegram HTML 排版規則\\n1. 嚴禁使用 Markdown 標題（如 ###、##、#）與 Markdown 表格（如 | --- |）。\\n2. 強制使用 Telegram 支援的 HTML 標籤：\\n   - 粗體使用 文字\\n   - 斜體使用 文字\\n   - 引用使用 文字\\n3. 清單請用圓點符號（•），清單項目前後切勿插入多餘的空行。",
+"maxIterations": 10,
+"returnIntermediateSteps": true,
+"passthroughBinaryImages": false,
+"enableStreaming": false
+}
+},
+"id": "3a4010a4-8c3f-41fd-baf7-1c00efd57e29",
+"name": "AI Agent (Text)",
+"type": "@n8n/n8n-nodes-langchain.agent",
+"typeVersion": 3.1,
+"position": \[
+3808,
+5408
+\],
+"onError": "continueErrorOutput"
+},
+{
+"parameters": {
+"jsCode": "for (const item of \$input.all()) {\\n  let text = item.json.output || item.json.text || "";\\n  text = text.replace(/\\n\\s\*-\\s\*\\n/g, '\\n- ');\\n  item.json.cleanText = text;\\n}\\nreturn $input.all();"
+},
+"type": "n8n-nodes-base.code",
+"typeVersion": 2,
+"position": \[
+4160,
+5088
+\],
+"id": "445c1f03-8760-4ea6-952f-08aa5957ce11",
+"name": "Code in JavaScript"
+},
+{
+"parameters": {
+"chatId": "YOUR_TELEGRAM_CHAT_ID",
+"text": "={{ \$json.output }}",
+"additionalFields": {
+"appendAttribution": false,
+"disable_web_page_preview": true,
+"parse_mode": "HTML"
+}
+},
+"type": "n8n-nodes-base.telegram",
+"typeVersion": 1.2,
+"position": \[
+4448,
+5168
+\],
+"id": "403b19e3-9c66-40c7-84d7-c7a11baaa5af",
+"name": "response1",
+"webhookId": "YOUR_TELEGRAM_RESPONSE_WEBHOOK_ID",
+"credentials": {
+"telegramApi": {
+"id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+"name": "Telegram account"
+}
+}
+},
+{
+"parameters": {
+"chatId": "YOUR_TELEGRAM_CHAT_ID",
+"text": "={{ \$json.error }}",
+"additionalFields": {
+"appendAttribution": false
+}
+},
+"type": "n8n-nodes-base.telegram",
+"typeVersion": 1.2,
+"position": \[
+4448,
+5312
+\],
+"id": "35913823-6fcc-437f-be79-4b1800c92ea1",
+"name": "error message1",
+"webhookId": "YOUR_TELEGRAM_ERROR_WEBHOOK_ID",
+"credentials": {
+"telegramApi": {
+"id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+"name": "Telegram account"
+}
+}
+},
+{
+"parameters": {
+"sessionIdType": "customKey",
+"sessionKey": "={{ \$json.message?.chat?.id || 'YOUR_TELEGRAM_CHAT_ID' }}"
+},
+"id": "1cb82c02-f487-4ca6-963e-5d59c82abac7",
+"name": "Simple Memory1",
+"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+"typeVersion": 1.4,
+"position": \[
+3872,
+5296
+\]
+},
+{
+"parameters": {
+"sessionIdType": "customKey",
+"sessionKey": "={{ \$json.message?.chat?.id || $json.chatId || 'YOUR_TELEGRAM_CHAT_ID' }}",
+"contextWindowLength": 20
+},
+"type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+"typeVersion": 1.4,
+"position": \[
+4144,
+5440
+\],
+"id": "964ca23d-ef72-47ae-9812-1a71161a8e7b",
+"name": "Simple Memory"
+},
+{
+"parameters": {
+"modelName": "models/gemini-2.5-flash",
+"options": {}
+},
+"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+"typeVersion": 1.2,
+"position": \[
+3728,
+5088
+\],
+"id": "97fffdda-0e81-4e4c-ac4f-93d2430e3bce",
+"name": "Google Gemini Chat Model",
+"credentials": {
+"googlePalmApi": {
+"id": "YOUR_GEMINI_CREDENTIAL_ID",
+"name": "Google Gemini(PaLM) Api account"
+}
+}
+},
+{
+"parameters": {
+"modelName": "models/gemini-2.5-flash",
+"options": {}
+},
+"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+"typeVersion": 1.2,
+"position": \[
+3664,
+5824
+\],
+"id": "7aebbcfe-5d73-423b-ba5d-57961a5993f8",
+"name": "Google Gemini Chat Model1",
+"credentials": {
+"googlePalmApi": {
+"id": "YOUR_GEMINI_CREDENTIAL_ID",
+"name": "Google Gemini(PaLM) Api account"
+}
+}
+},
+{
+"parameters": {
+"modelName": "models/gemini-2.5-flash",
+"options": {}
+},
+"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+"typeVersion": 1.2,
+"position": \[
+3632,
+5504
+\],
+"id": "52ecb2f3-777a-4867-975f-46c67da4c9da",
+"name": "Google Gemini Chat Model2",
+"credentials": {
+"googlePalmApi": {
+"id": "YOUR_GEMINI_CREDENTIAL_ID",
+"name": "Google Gemini(PaLM) Api account"
+}
+}
+},
+{
+"parameters": {
+"modelName": "models/gemini-2.5-flash",
+"options": {}
+},
+"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+"typeVersion": 1.2,
+"position": \[
+4032,
+5840
+\],
+"id": "9fc71b68-50d5-41f7-a285-b73149de4c4d",
+"name": "Google Gemini Chat Model3",
+"credentials": {
+"googlePalmApi": {
+"id": "YOUR_GEMINI_CREDENTIAL_ID",
+"name": "Google Gemini(PaLM) Api account"
+}
+}
+},
+{
+"parameters": {
+"model": "deepseek-chat",
+"options": {}
+},
+"type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek",
+"typeVersion": 1,
+"position": \[
+3264,
+5648
+\],
+"id": "424beab3-c4b9-4f0e-8dca-a18a12355d41",
+"name": "DeepSeek Chat Model",
+"credentials": {
+"deepSeekApi": {
+"id": "YOUR_DEEPSEEK_CREDENTIAL_ID",
+"name": "DeepSeek account"
+}
+}
+},
+{
+"parameters": {
+"model": "deepseek/deepseek-chat",
+"options": {}
+},
+"type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+"typeVersion": 1,
+"position": \[
+4400,
+5776
+\],
+"id": "4b38710b-ae7d-477d-bde1-c5d8873307f8",
+"name": "OpenRouter Chat Model",
+"credentials": {
+"openRouterApi": {
+"id": "YOUR_OPENROUTER_CREDENTIAL_ID",
+"name": "OpenRouter account"
+}
+}
+},
+{
+"parameters": {},
+"type": "@n8n/n8n-nodes-langchain.toolThink",
+"typeVersion": 1,
+"position": \[
+4016,
+5296
+\],
+"id": "f9f0a6cc-25d1-492c-97ee-099688b686e1",
+"name": "Think"
+},
+{
+"parameters": {
+"content": "Calculate Today's Food",
+"height": 352,
+"width": 320,
+"color": 2
+},
+"type": "n8n-nodes-base.stickyNote",
+"typeVersion": 1,
+"position": \[
+3248,
+5472
+\],
+"id": "d07725f7-d225-4d87-976f-b620df7c83ee",
+"name": "Sticky Note2"
+},
+{
+"parameters": {
+"toolDescription": "功能:紀錄每日飲食內容,卡路里與三大營養素計算",
+"text": "={{ \$fromAI('Prompt__User_Message\_', `, 'string') }}", "options": { "systemMessage": "# 工作規則\n### 處理流程：\n1. 詳細辨識圖片中的主要食物項目（最多 3 項，依熱量由高至低排序）。\n2. 同時參考使用者提供的 caption（說明文字），若有 caption 則優先參考其內容來輔助判斷食物名稱與份量。\n3. 「整份食物描述」為主要食物項目組成的簡短字串，若超過 20 個字則只取前 20 個字。\n4. 估算每項主要食物的重量（單位：克）。\n5. 估算整份食物的總熱量（千卡）與三大營養素總重（克）。\n6. 先使用 \"SaveFood\" 工具。\n7. 再使用 \"CalFood\" 工具。\n8. 按照以下格式輸出：\n\n這是一份<整份食物描述> 包含：\n- [食物項目1] 約 [重量]g\n- [食物項目2] 約 [重量]g\n- [食物項目3] 約 [重量]g（如有）\n- 🔥熱量：xxx kcal\n- 🍚碳水化合物：xx g\n- 🍗蛋白質：xx g\n- 🥑脂肪：xx g\n\n[今日飲食總結]\n- 🔥總熱量：xxx kcal\n- 🍚碳水化合物：xx g\n- 🍗蛋白質：xx g\n- 🥑脂肪：xx g" } }, "type": "@n8n/n8n-nodes-langchain.agentTool", "typeVersion": 3, "position": [ 3296, 5520 ], "id": "46154aa1-9ee9-40fb-a12d-d6edb7ccbd62", "name": "FoodAgent" }, { "parameters": { "descriptionType": "manual", "toolDescription": "=# 使用此工具,加總今日攝取的總熱量和3大營養素\n- 用法:使用今日日期\"{{ $now.format('yyyy-MM-dd') }}\",於google sheet中取得今日所攝取的食物項目資料並加總今日攝取的總熱量和3大營養素", "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list", "cachedResultName": "終極個人助理資料庫 (記帳 + 習慣 + 飲食)" }, "sheetName": { "__rl": true, "value": "個人飲食日誌", "mode": "name" }, "options": {} }, "type": "n8n-nodes-base.googleSheetsTool", "typeVersion": 4.7, "position": [ 3472, 5648 ], "id": "ee60ed17-64d1-4fbe-bd11-67e1510f4067", "name": "CalFood", "credentials": { "googleSheetsOAuth2Api": { "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets account" } } }, { "parameters": { "descriptionType": "manual", "toolDescription": "=#功能:\n- 接收下方json格式的食物資料,並進行資料儲存至google sheets (insert a row)\n\n# json格式的食物資料\n{\n\"date\":\"{{ $now.format('yyyy-MM-dd') }}\",\n\"name\":<整份食物>的食物描述,\n\"calories\":kcal,\n\"carbohydrate\":g,\n\"protein\":g,\n\"fat\":g\n}", "operation": "append", "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list", "cachedResultName": "終極個人助理資料庫 (記帳 + 習慣 + 飲食)" }, "sheetName": { "__rl": true, "value": "個人飲食日誌", "mode": "name" }, "columns": { "mappingMode": "defineBelow", "value": { "date": "={{ $fromAI('date', `, 'string') }}",
+"name": "={{ \$fromAI('name', `, 'string') }}", "calories": "={{ $fromAI('calories', `, 'string') }}",
+"carbohydrate": "={{ \$fromAI('carbohydrate', `, 'string') }}", "protein": "={{ $fromAI('protein', `, 'string') }}",
+"fat": "={{ \$fromAI('fat', `, 'string') }}" }, "matchingColumns": [], "schema": [ { "id": "date", "displayName": "date", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false }, { "id": "name", "displayName": "name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false }, { "id": "calories", "displayName": "calories", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false }, { "id": "carbohydrate", "displayName": "carbohydrate", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false }, { "id": "protein", "displayName": "protein", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false }, { "id": "fat", "displayName": "fat", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true, "removed": false } ], "attemptToConvertTypes": false, "convertFieldsToString": false }, "options": {} }, "type": "n8n-nodes-base.googleSheetsTool", "typeVersion": 4.7, "position": [ 3376, 5648 ], "id": "67cf104a-2f93-447e-b840-7185391f2905", "name": "SaveFood", "credentials": { "googleSheetsOAuth2Api": { "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets account" } } }, { "parameters": { "toolDescription": "功能：處理使用者行程、事件排程、提醒、Google 日曆(行事曆)操作。", "text": "={{ $fromAI('Prompt__User_Message_', `, 'string') }}",
+"options": {
+"systemMessage": "=# 工作規則\\n1. 解析 User Message，判斷要使用哪個 Google Calendar Tool（Create、Query、Update、Delete）。\\n2. 判斷並傳送對應的行事曆 ID 和相關資料給 Tool：\\n若為一般個人行程：傳送行事曆 ID YOUR_PRIMARY_EMAIL@gmail.com。\\n若明確提及或查詢 TimeTree：傳送行事曆 ID YOUR_TIMETREE_CALENDAR_ID@import.calendar.google.com（⚠️ 嚴格限制：TimeTree 僅能呼叫 Query，絕對不可呼叫 Create、Update、Delete）。\\n\\n# 核心原則：新增與修改皆必須設定 Color_ID\\n建立 (Create) 或更新 (Update) 行程時，必須同時設定對應的 Color_ID：\\n- 只有伴侶行程 ➡️ Color_ID: "5" (黃色)\\n- 只有你自己的行程 ➡️ Color_ID: "2" (綠色)\\n- 兩人一起的行程 ➡️ Color_ID: "9" (藍色)\\n- 紀念日 ➡️ Color_ID: "4" (粉紅/紅色)\\n\\n# 各 Tool 執行細節\\n1. Create (新增)：\\n   - 計算 Start/End 時間。\\n   - 帶入對應的 Color_ID 與 Description。\\n2. Update (修改顏色/內容)：\\n   - 若使用者要修改已有行程，先呼叫 Query 找 Event_ID。\\n   - 再呼叫 Update 傳入 Event_ID 並更新 Color_ID 或標題。\\n3. Query (查詢)：\\n   - Before 時間加 1 分鐘，After 時間減 1 分鐘以完整覆蓋區間。\\n\\n# 重複行程與時間規則\\n1. 無結束時間時：預設結束時間為開始時間 1 小時後。\\n2. 重複行程：\\n   - 計算並填寫首發事件的 Start 及 End 時間。\\n   - 在 Description 寫入 RRULE（例：`RRULE:FREQ=MONTHLY;BYMONTHDAY=19` 或 `RRULE:FREQ=WEEKLY;BYDAY=MO`）"
+}
+},
+"type": "@n8n/n8n-nodes-langchain.agentTool",
+"typeVersion": 3,
+"position": \[
+3664,
+5648
+\],
+"id": "b9f38ddf-7b79-45a8-8d9c-dfc49336cc6b",
+"name": "ScheduleAgent"
+},
+{
+"parameters": {
+"descriptionType": "manual",
+"toolDescription": "Create an event in Google Calendar",
+"calendar": {
+"\__rl": true,
+"value": "={{ \$fromAI('Calendar', `YOUR_PRIMARY_EMAIL@gmail.com`, 'string') }}",
+"mode": "id"
+},
+"start": "={{ \$fromAI('Start', `, 'string') }}", "end": "={{ $fromAI('End', `, 'string') }}",
+"useDefaultReminders": "={{ \$fromAI('Use_Default_Reminders', `, 'boolean') }}", "additionalFields": { "color": "={{ $fromAI('Color_ID', 'Google Calendar Color ID (1-11)', 'string') }}", "description": "={{ $fromAI('Description', `, 'string') }}",
+"location": "={{ \$fromAI('Location', `, 'string') }}", "summary": "={{ $fromAI('Summary', `, 'string') }}"
+}
+},
+"type": "n8n-nodes-base.googleCalendarTool",
+"typeVersion": 1.3,
+"position": \[
+3776,
+5824
+\],
+"id": "c4181287-3658-450f-be9c-96b4b3a59a90",
+"name": "Create",
+"credentials": {
+"googleCalendarOAuth2Api": {
+"id": "YOUR_GOOGLE_CALENDAR_CREDENTIAL_ID",
+"name": "Google Calendar account"
+}
+}
+},
+{
+"parameters": {
+"descriptionType": "manual",
+"toolDescription": "Get many events in Google Calendar",
+"operation": "getAll",
+"calendar": {
+"\__rl": true,
+"value": "={{ \$fromAI('Calendar', `, 'string') }}", "mode": "id" }, "returnAll": "={{ $fromAI('Return_All', `, 'boolean') }}",
+"timeMin": "={{ \$fromAI('After', `, 'string') }}", "timeMax": "={{ $fromAI('Before', `, 'string') }}",
+"options": {}
+},
+"type": "n8n-nodes-base.googleCalendarTool",
+"typeVersion": 1.3,
+"position": \[
+3856,
+5824
+\],
+"id": "3d572924-aa2d-4960-9aa1-2e6ab5e17d78",
+"name": "Query",
+"credentials": {
+"googleCalendarOAuth2Api": {
+"id": "YOUR_GOOGLE_CALENDAR_CREDENTIAL_ID",
+"name": "Google Calendar account"
+}
+}
+},
+{
+"parameters": {
+"descriptionType": "manual",
+"toolDescription": "Update an event in Google Calendar",
+"operation": "update",
+"calendar": {
+"\__rl": true,
+"value": "={{ \$fromAI('Calendar', `, 'string') }}", "mode": "id" }, "eventId": "={{ $fromAI('Event_ID', `, 'string') }}",
+"useDefaultReminders": "={{ \$fromAI('Use_Default_Reminders', `, 'boolean') }}", "updateFields": { "color": "={{ $fromAI('Color_ID', 'Google Calendar Color ID (1-11)', 'string') }}" } }, "type": "n8n-nodes-base.googleCalendarTool", "typeVersion": 1.3, "position": [ 3904, 5728 ], "id": "483c0d08-ce16-4dd7-912c-05da9e5ecba4", "name": "Update", "credentials": { "googleCalendarOAuth2Api": { "id": "YOUR_GOOGLE_CALENDAR_CREDENTIAL_ID", "name": "Google Calendar account" } } }, { "parameters": { "descriptionType": "manual", "toolDescription": "Delete an event in Google Calendar", "operation": "delete", "calendar": { "__rl": true, "value": "={{ $fromAI('Calendar', `, 'string') }}",
+"mode": "id"
+},
+"eventId": "={{ \$fromAI('Event_ID', `, 'string') }}", "options": {} }, "type": "n8n-nodes-base.googleCalendarTool", "typeVersion": 1.3, "position": [ 3904, 5616 ], "id": "6eef6835-53cf-4ff8-ac63-46433c7dbfb0", "name": "Delete", "credentials": { "googleCalendarOAuth2Api": { "id": "YOUR_GOOGLE_CALENDAR_CREDENTIAL_ID", "name": "Google Calendar account" } } }, { "parameters": { "toolDescription": "A research agent for all research actions (News, Web Search, and Hong Kong Weather)", "text": "={{ $fromAI('Prompt__User_Message_', `, 'string') }}",
+"options": {
+"systemMessage": "=# Overview\\nYou are a web research assistant. Your responsibilities include conducting quick web searches, performing deeper research, and retrieving current weather information. \\n\\n**Web Search & Research**  \\n   - Use **Tavily** for quick factual lookups, recent news, or verifying specific pieces of information.   \\n\\n**Weather Information**  \\n   - Use **Open Weather Map** to retrieve current weather data, including temperature, conditions, and forecasts for a given location.\\n\\nAlways prioritize clarity, credibility, and helpfulness in your responses."
+}
+},
+"type": "@n8n/n8n-nodes-langchain.agentTool",
+"typeVersion": 2.2,
+"position": \[
+4416,
+5632
+\],
+"id": "76a5c0f2-d8d1-43e1-9241-8cbeb71cd272",
+"name": "Search Agent"
+},
+{
+"parameters": {
+"query": "={{ \$fromAI('Query', `` , 'string') }}", "options": {} }, "type": "@tavily/n8n-nodes-tavily.tavilyTool", "typeVersion": 1, "position": [ 4496, 5776 ], "id": "bc46df81-a887-4b4f-ad71-9e8632877596", "name": "Tavily", "credentials": { "tavilyApi": { "id": "YOUR_TAVILY_CREDENTIAL_ID", "name": "Tavily account" } } }, { "parameters": { "cityName": "={{ $fromAI('City', `Hong Kong`, 'string') }}", "language": "zh_tw" }, "type": "n8n-nodes-base.openWeatherMapTool", "typeVersion": 1, "position": [ 4592, 5776 ], "id": "66c90b0b-d12d-4991-be82-339cc4e34e40", "name": "OpenWeatherMap", "credentials": { "openWeatherMapApi": { "id": "YOUR_OPENWEATHER_CREDENTIAL_ID", "name": "OpenWeatherMap account" } } }, { "parameters": { "toolDescription": "=# 功能:\n從 Google 試算表中查詢 Kow聯教會足球聯賽的賽程、對手、比賽日期、時間與主客場狀態，以及更新球員考勤點名。", "text": "={{ $fromAI('Prompt__User_Message_',  ``, 'string') }}",
+"options": {
+"systemMessage": "你是一位專門管理「榮恩足球隊」的考勤助理。\\n\\n當收到 Telegram 的賽事點名/陣容訊息時，請嚴格按照以下步驟執行：\\n\\n1. 呼叫 【Read】 工具，取得試算表中「簽到表」的所有球員姓名名單。\\n2. 分析 Telegram 訊息內容，確認比賽場次標題，並比對全隊名單中每位球員的出席狀態（出席為 "✅"，未出席為 "❌"）。\\n3. 對於名冊中的每位球員，呼叫 【Attendance】 工具進行更新。\\n4. 於 Telegram 簡短回覆更新結果（統計出席與缺席人數）。"
+}
+},
+"type": "@n8n/n8n-nodes-langchain.agentTool",
+"typeVersion": 3,
+"position": \[
+4064,
+5664
+\],
+"id": "ea504d06-bdc1-4aac-b11a-33e02f9b07ed",
+"name": "Football Agent"
+},
+{
+"parameters": {
+"descriptionType": "manual",
+"toolDescription": "用於更新試算表中的球員考勤打勾/打叉。",
+"operation": "update",
+"documentId": {
+"\__rl": true,
+"value": "YOUR_FOOTBALL_SHEET_ID",
+"mode": "list",
+"cachedResultName": "榮恩足球隊"
+},
+"sheetName": {
+"\__rl": true,
+"value": "gid=0",
+"mode": "list",
+"cachedResultName": "Attendence"
+},
+"columns": {
+"mappingMode": "defineBelow",
+"value": {
+"隊員名單": "={{ \$fromAI('playerName', '球員姓名') }}"
+},
+"matchingColumns": \[
+"隊員名單"
+\],
+"schema": \[
+{
+"id": "隊員名單",
+"displayName": "隊員名單",
+"required": false,
+"defaultMatch": false,
+"display": true,
+"type": "string",
+"canBeUsedToMatch": true,
+"removed": false
+}
+\],
+"attemptToConvertTypes": false,
+"convertFieldsToString": false
+},
+"options": {}
+},
+"type": "n8n-nodes-base.googleSheetsTool",
+"typeVersion": 4.7,
+"position": \[
+4240,
+5840
+\],
+"id": "a8c109d2-bf3e-4915-867b-839fd642c18b",
+"name": "Attendance",
+"credentials": {
+"googleSheetsOAuth2Api": {
+"id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+"name": "Google Sheets account"
+}
+}
+},
+{
+"parameters": {
+"descriptionType": "manual",
+"toolDescription": "功能：從 Google 試算表（榮恩足球隊）中讀取聯賽賽程、比賽日期、對手、時間以及球員的出席率與出席狀況。",
+"documentId": {
+"\__rl": true,
+"value": "YOUR_FOOTBALL_SHEET_ID",
+"mode": "list",
+"cachedResultName": "榮恩足球隊"
+},
+"sheetName": {
+"\__rl": true,
+"value": "={{ \$fromAI('Sheet', `Attendence,第三屆Kow聯教會足球聯賽`, 'string') }}",
+"mode": "name"
+},
+"options": {}
+},
+"type": "n8n-nodes-base.googleSheetsTool",
+"typeVersion": 4.7,
+"position": \[
+4144,
+5840
+\],
+"id": "3ea429f6-2832-4ce6-8d6e-14b1801d3735",
+"name": "Read",
+"credentials": {
+"googleSheetsOAuth2Api": {
+"id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+"name": "Google Sheets account"
+}
+}
+},
+{
+"parameters": {
+"rule": {
+"interval": \[
+{
+"field": "cronExpression",
+"expression": "0 6 \* \* \*"
+}
+\]
+}
+},
+"id": "550d09da-09cc-4d2b-89aa-fbc1550ebe99",
+"name": "06:00 晨報觸發",
+"type": "n8n-nodes-base.scheduleTrigger",
+"typeVersion": 1.2,
+"position": \[
+3184,
+4512
+\]
+},
+{
+"parameters": {
+"rule": {
+"interval": \[
+{
+"field": "cronExpression",
+"expression": "30 22 \* \* \*"
+}
+\]
+}
+},
+"id": "1ce91b3a-f9e2-4fb2-ab19-7794c6af528a",
+"name": "22:30 夜間簽到觸發",
+"type": "n8n-nodes-base.scheduleTrigger",
+"typeVersion": 1.2,
+"position": \[
+3184,
+4864
+\],
+"disabled": true
+},
+{
+"parameters": {
+"jsCode": "const today = new Date();\\ntoday.setHours(0, 0, 0, 0);\\n\\nconst defaultMatches = \[\\n  { date: '2026-09-13', time: '18:00', opponent: '鴻恩堂', isHome: true },\\n  { date: '2026-10-11', time: '19:00', opponent: '青怡中心', isHome: false },\\n  { date: '2026-11-01', time: '20:00', opponent: '慈光青少年', isHome: true },\\n  { date: '2026-11-22', time: '19:00', opponent: '慈光青成', isHome: false },\\n  { date: '2026-12-06', time: '20:00', opponent: '建民堂', isHome: true },\\n  { date: '2027-01-10', time: '20:00', opponent: '慈光一新', isHome: false },\\n  { date: '2027-01-24', time: '19:00', opponent: '荃灣敬拜會', isHome: true }\\n\];\\n\\nlet dailyReminders = \[\];\\n\\ndefaultMatches.forEach(m => {\\n  const \[year, month, day\] = m.date.split('-').map(Number);\\n  const matchDate = new Date(year, month - 1, day);\\n  matchDate.setHours(0, 0, 0, 0);\\n  \\n  const diffDays = Math.round((matchDate - today) / (1000 \* 60 \* 60 \* 24));\\n  const isHome = Boolean(m.isHome);\\n\\n  if (diffDays === 14) {\\n    dailyReminders.push(`🏟️ <b>場地抽籤提醒</b>：距離對陣 ${m.opponent} 的比賽還有兩週，請盡快進行抽籤足球場場地！`);\\n  }\\n  if (diffDays === 13) {\\n    dailyReminders.push(`📲 <b>發佈資訊及投票提醒</b>：場地抽籤結果已出！請發送比賽資訊給球隊，並記得建立出席投票 (Poll)。`);\\n  }\\n  if (diffDays === 1) {\\n    let checklist = `📝 <b>賽前 24 小時提醒 (對陣 ${m.opponent})</b>：\\n  - ✅ 提交明日比賽陣容 (Report Line-up)`;\\n    if (isHome) {\\n      checklist += `\\n  - 📸 <b>拍攝任務</b>：我們是主場隊伍，請確認已安排好明日的拍攝人手！`;\\n    }\\n    dailyReminders.push(checklist);\\n  }\\n  if (diffDays === -1) {\\n    dailyReminders.push(`💰 <b>賽後跟進 (對陣 ${m.opponent})</b>：\\n  - ✅ 請繳交昨日比賽的球證費用\\n  - ✅ 向賽會報告比賽結果`);\\n  }\\n});\\n\\nconst footballReminder = dailyReminders.length > 0\\n  ? dailyReminders.join('\\n\\n')\\n  : '今日無特別賽程行政提醒';\\n\\nconst bibleVerses = \[\\n  "「你要專心仰賴耶和華，不可倚靠自己的聰明，在你一切所行的事上都要認定他，他必指引你的路。」— 箴言 3:5-6",\\n  "「耶和華是我的牧者，我必不致缺乏。」— 詩篇 23:1",\\n  "「我靠著那加給我力量的，凡事都能作。」— 腓立比書 4:13",\\n  "「但那等候耶和華的必從新得力。他們必如鷹展翅上騰；他們奔跑卻不困倦，行走卻不疲乏。」— 以賽亞書 40:31",\\n  "「應當毫無憂慮，只要凡事藉著禱告、祈求和感謝，將你們所要的告知神。神所賜超過人能了解的平安，必在基督耶穌裡保守你們的心懷意念。」— 腓立比書 4:6-7"\\n\];\\n\\nconst randomVerse = bibleVerses\[Math.floor(Math.random() \* bibleVerses.length)\];\\n\\nreturn \[{\\n  json: {\\n    footballReminder,\\n    bibleVerse: randomVerse\\n  }\\n}\];"
+},
+"id": "edb3d4b7-dc77-4476-8508-bf2101511e2b",
+"name": "TimeTree 多日曆抓取與賽程金句計算",
+"type": "n8n-nodes-base.code",
+"typeVersion": 2,
+"position": \[
+3424,
+4480
+\]
+},
+{
+"parameters": {
+"assignments": {
+"assignments": \[
+{
+"id": "chat_input",
+"name": "chatInput",
+"value": "={{ '【觸發事件類型】：時間 06:00 晨報任務。請執行【模式一：晨報與早晨新聞任務】：\\n1. 呼叫 Search Agent 取得今日香港天氣預報（包含氣溫、天氣狀況與降雨提醒）。\\n2. 呼叫 Query 讀取今日 Google 日曆行程（同時查詢主日曆 YOUR_PRIMARY_EMAIL@gmail.com 與已同步之 TimeTree 日曆 YOUR_TIMETREE_CALENDAR_ID@import.calendar.google.com）。\\n3. 結合以下榮恩足球隊提醒與今日聖經金句，彙整成排版清晰、溫暖易讀的晨報推送：\\n\\n【榮恩足球隊提醒】：\\n' + \$json.footballReminder + '\\n\\n【今日聖經金句】：\\n' + $json.bibleVerse }}",
+"type": "string"
+},
+{
+"id": "chat_id",
+"name": "chatId",
+"value": "YOUR_TELEGRAM_CHAT_ID",
+"type": "string"
+}
+\]
+},
+"options": {}
+},
+"id": "9f4c7858-8b11-444c-832b-523b806f27d1",
+"name": "設定晨報輸入",
+"type": "n8n-nodes-base.set",
+"typeVersion": 3.4,
+"position": \[
+3664,
+4512
+\]
+},
+{
+"parameters": {
+"assignments": {
+"assignments": \[
+{
+"id": "chat_input",
+"name": "chatInput",
+"value": "【觸發事件類型】：時間 新聞速報任務。請執行【模式二：Automation News 三大分類新聞速報】，呼叫 Search Agent 搜尋最新新聞，並分為【世界大事】、【AI & technology】、【Hong Kong】三大分類（每個分類各挑選出 3 則新聞）整理輸出。",
+"type": "string"
+},
+{
+"id": "chat_id",
+"name": "chatId",
+"value": "YOUR_TELEGRAM_CHAT_ID",
+"type": "string"
+}
+\]
+},
+"options": {}
+},
+"id": "597406ed-5668-4a95-a20d-93f908a770bf",
+"name": "設定新聞輸入",
+"type": "n8n-nodes-base.set",
+"typeVersion": 3.4,
+"position": \[
+3664,
+4704
+\]
+},
+{
+"parameters": {
+"assignments": {
+"assignments": \[
+{
+"id": "chat_input",
+"name": "chatInput",
+"value": "【觸發事件類型】：時間 22:30 簽到提醒。請執行【模式三：夜間簽到提醒】，輸出晚間簽到邀請訊息。",
+"type": "string"
+},
+{
+"id": "chat_id",
+"name": "chatId",
+"value": "YOUR_TELEGRAM_CHAT_ID",
+"type": "string"
+}
+\]
+},
+"options": {}
+},
+"id": "c6649c74-dede-4df5-80ed-a4de88c6bf99",
+"name": "設定簽到提醒輸入",
+"type": "n8n-nodes-base.set",
+"typeVersion": 3.4,
+"position": \[
+3664,
+4864
+\]
+},
+{
+"parameters": {
+"assignments": {
+"assignments": \[
+{
+"id": "chat_input",
+"name": "chatInput",
+"value": "={{ '【使用者訊息】：' + (\$json.message.text || '') }}",
+"type": "string"
+},
+{
+"id": "chat_id",
+"name": "chatId",
+"value": "={{ \$json.message.chat.id }}",
+"type": "string"
+}
+\]
+},
+"options": {}
+},
+"id": "bf48b2bd-d54d-4f92-b93b-ccbfe03f276d",
+"name": "設定習慣回覆輸入",
+"type": "n8n-nodes-base.set",
+"typeVersion": 3.4,
+"position": \[
+2896,
+4624
+\]
+},
+{
+"parameters": {
+"promptType": "define",
+"text": "={{ \$json.chatInput }}",
+"options": {
+"systemMessage": "=你是一位全能、體貼且高度規律的「個人生活與生產力總管助理」。\\n當前系統時間：{{ \$now.setZone('Asia/Hong_Kong').toFormat('yyyy年MM月dd日 cccc HH:mm') }}\\n\\n你的核心任務是根據輸入的【觸發事件類型】或【使用者訊息】，精準切換至對應的模式執行任務。\\n\\n========================================\\n【模式一：晨報任務 & Morning Automation News (觸發詞含 "晨報" 或 時間 06:00)】\\n========================================\\n1. 檢視輸入中的【TimeTree 今日各日曆行程】（若顯示尚未設定，則呼叫 ScheduleAgent 讀取今日行程），並呼叫 Query 取得今日香港天氣預報。\\n2. 評估行程緊湊度與穿搭/雨具建議，並整合「榮恩足球隊提醒」與「今日聖經金句」。\\n\\n========================================\\n【模式二：新聞速報任務 & 續讀模式 (觸發詞含 "新聞"、時間 12:00，或使用者輸入 "more" / "continue" / "更多" / "繼續")】\\n========================================\\n1. 若為初次新聞觸發（或輸入「新聞」）：\\n   - 呼叫 Search Agent 工具搜尋最新新聞，分為三大分類：世界大事、AI & technology、Hong Kong，每個分類各挑選 3 則新聞。\\n2. 若使用者輸入「more」、「continue」、「更多」或「繼續」：\\n   - 檢視對話記憶中剛才已經顯示過的新聞標題，再列出接下來全新的 3 則新聞。\\n\\n========================================\\n【模式三：夜間簽到提醒 (觸發詞含 "簽到提醒" 或 時間 22:30)】\\n========================================\\n邀請使用者回覆今日的：與主對話、讀經／書 (min)、心情 (1-10)、今日發生咩事。\\n\\n========================================\\n【模式四：接收習慣回覆與寫入 (當使用者回覆簽到內容時)】\\n========================================\\n自動解析使用者輸入的文字並呼叫 Habit_Tracker 工具寫入工作表（今日發生咩事必須 100% 完整保留原文，不作濃縮）。"
+}
+},
+"id": "33b202b0-30a0-4d45-ace7-4253d38397d4",
+"name": "Daily AI Agent",
+"type": "@n8n/n8n-nodes-langchain.agent",
+"typeVersion": 1.7,
+"position": \[
+4048,
+4544
+\],
+"onError": "continueErrorOutput"
+},
+{
+"parameters": {
+"descriptionType": "manual",
+"toolDescription": "將每日習慣與靈修簽到寫入 Habit_Tracker 分頁（包含：Date、與主對話、讀經／書 (min)、心情 (1-10)、今日發生咩事 (完整紀錄，不作濃縮摘要)）",
+"operation": "append",
+"documentId": {
+"\__rl": true,
+"value": "YOUR_GOOGLE_SHEET_ID",
+"mode": "list",
+"cachedResultName": "終極個人助理資料庫 (記帳 + 習慣 + 飲食)"
+},
+"sheetName": {
+"\__rl": true,
+"value": "Habit_Tracker",
+"mode": "name"
+},
+"columns": {
+"mappingMode": "defineBelow",
+"value": {
+"Date": "={{ \$now.format('yyyy-MM-dd') }}",
+"與主對話": "={{ \$fromAI('talk_with_god', '與主對話內容', 'string') }}",
+"讀經／書 (min)": "={{ \$fromAI('reading_minutes', '讀經／書時間 (X min)', 'string') }}",
+"心情 (1-10)": "={{ \$fromAI('mood_score', '今日心情評分 (1-10)', 'string') }}",
+"今日發生咩事 (完整紀錄)": "={{ \$fromAI('what_happened_today', '今日發生咩事 (必須100%完整記錄原文，嚴禁濃縮或摘要)', 'string') }}"
+},
+"matchingColumns": \[\],
+"schema": \[\],
+"attemptToConvertTypes": false,
+"convertFieldsToString": false
+},
+"options": {}
+},
+"id": "1a6de17d-ad93-4595-8842-4cd409027025",
+"name": "Habit_Tracker",
+"type": "n8n-nodes-base.googleSheetsTool",
+"typeVersion": 4.7,
+"position": \[
+4352,
+4784
+\],
+"credentials": {
+"googleSheetsOAuth2Api": {
+"id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+"name": "Google Sheets account"
+}
+}
+},
+{
+"parameters": {
+"modelName": "models/gemini-2.5-flash",
+"options": {}
+},
+"type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+"typeVersion": 1.2,
+"position": \[
+4048,
+4768
+\],
+"id": "bdfc8d34-bb3d-4c83-ab7b-db8a587e1982",
+"name": "Google Gemini Chat Model4",
+"credentials": {
+"googlePalmApi": {
+"id": "YOUR_GEMINI_CREDENTIAL_ID",
+"name": "Google Gemini(PaLM) Api account"
+}
+}
+},
+{
+"parameters": {
+"rule": {
+"interval": \[
+{
+"field": "cronExpression",
+"expression": "0 12 \* \* \*"
+}
+\]
+}
+},
+"id": "e136a9c5-4612-493e-84c8-6d5d7e76c7f3",
+"name": "12:00 新聞速報觸發",
+"type": "n8n-nodes-base.scheduleTrigger",
+"typeVersion": 1.2,
+"position": \[
+3184,
+4704
+\]
+},
+{
+"parameters": {
+"descriptionType": "manual",
+"toolDescription": "搜尋 Google Calendar 上的事件（例如返工行程）。必須傳入搜尋關鍵字 (query) 與時間範圍 (timeMin, timeMax)。",
+"operation": "getAll",
+"calendar": {
+"\__rl": true,
+"value": "primary",
+"mode": "list"
+},
+"returnAll": true,
+"options": {
+"timeMin": "={{ \$fromAI('timeMin', '開始時間 (RFC3339 格式)', 'string') }}",
+"timeMax": "={{ \$fromAI('timeMax', '結束時間 (RFC3339 格式)', 'string') }}",
+"query": "={{ \$fromAI('query', '搜尋關鍵字 (如 LP8 或 救生員)', 'string') }}"
+}
+},
+"type": "n8n-nodes-base.googleCalendarTool",
+"typeVersion": 1.1,
+"position": \[
+5056,
+5712
+\],
+"id": "bb20e6e2-e194-464b-9722-8b5b5cf064a3",
+"name": "GetCalendarEvents",
+"credentials": {
+"googleCalendarOAuth2Api": {
+"id": "YOUR_GOOGLE_CALENDAR_CREDENTIAL_ID",
+"name": "Google Calendar account"
+}
+}
+},
+{
+"parameters": {
+"descriptionType": "manual",
+"toolDescription": "讀取試算表「返工紀錄」分頁的現有資料，用於比對 Google Calendar 行程，避免重覆寫入班次。",
+"documentId": {
+"\__rl": true,
+"value": "YOUR_GOOGLE_SHEET_ID",
+"mode": "list"
+},
+"sheetName": {
+"\_*rl": true,
+"value": "返工紀錄",
+"mode": "name"
+},
+"options": {}
+},
+"type": "n8n-nodes-base.googleSheetsTool",
+"typeVersion": 4.7,
+"position": \[
+5184,
+5648
+\],
+"id": "3b10edf5-2e8b-4e67-8f98-11423a9f1d64",
+"name": "ReadWorkRecords",
+"credentials": {
+"googleSheetsOAuth2Api": {
+"id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+"name": "Google Sheets account"
+}
+}
+},
+{
+"parameters": {
+"toolDescription": "功能：處理日常消費記帳、管理薪金預算、讀取每月財務摘要，以及透過 Google Calendar 自動更新並同步返工紀錄（防止重覆遺漏）。",
+"text": "={{ \$fromAI('Prompt__User_Message*', `` , 'string') }}", "options": { "systemMessage": "=# 工作規則\n你是專業記帳、薪金預算與儲蓄目標管理助理。\n1. 【新增消費記帳】：提取商戶、金額、分類，呼叫 SaveExpense 寫入「自動記帳資料庫」，再呼叫 ReadExpense 讀取「每月財務摘要」回報。\n2. 【查詢每月財務摘要】：呼叫 ReadExpense 讀取「每月財務摘要」第 2 列數據。\n3. 【修改薪金預算/儲蓄目標】：呼叫 UpdateBudgetGoal 更新「每月財務摘要」（匹配 ID 填寫 `config_row`），並回報最新狀態。\n4. 【自動更新返工紀錄】：當收到使用者指令「更新返工紀錄」時，搜尋本月 Google Calendar 上的返工行程並與「返工紀錄」交叉比對，確保不重覆寫入。" } }, "type": "@n8n/n8n-nodes-langchain.agentTool", "typeVersion": 3, "position": [ 4752, 5632 ], "id": "dd89fbe0-8f3e-4be7-9c1d-db27e9428366", "name": "ExpenseAgent1" }, { "parameters": { "descriptionType": "manual", "toolDescription": "將單筆消費紀錄寫入自動記帳資料庫", "operation": "append", "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list" }, "sheetName": { "__rl": true, "value": "自動記帳資料庫", "mode": "name" }, "columns": { "mappingMode": "defineBelow", "value": { "日期時間": "={{ $fromAI('datetime', '交易日期時間 (格式: yyyy-MM-dd HH:mm:ss)', 'string') }}", "商戶/交易對象": "={{ $fromAI('merchant', '商戶或交易對象名稱', 'string') }}", "金額": "={{ $fromAI('amount', '消費金額 (數字)', 'string') }}", "交易類型": "={{ $fromAI('category', '交易類型', 'string') }}", "支付方式": "={{ $fromAI('payment_method', '支付方式', 'string') }}", "備註/原始通知": "={{ $fromAI('note', '備註或原始通知內容', 'string') }}", "交易ID/Hash": "={{ $fromAI('tx_hash', '唯一交易ID或Hash', 'string') }}" } }, "options": {} }, "type": "n8n-nodes-base.googleSheetsTool", "typeVersion": 4.7, "position": [ 4912, 5824 ], "id": "d7adf527-39bc-43cb-99e2-3764b2349b60", "name": "SaveExpense1", "credentials": { "googleSheetsOAuth2Api": { "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets account" } } }, { "parameters": { "descriptionType": "manual", "toolDescription": "讀取「每月財務摘要」分頁的所有全局設定。", "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list" }, "sheetName": { "__rl": true, "value": "每月財務摘要", "mode": "name" }, "options": {} }, "type": "n8n-nodes-base.googleSheetsTool", "typeVersion": 4.7, "position": [ 5008, 5856 ], "id": "eb12526e-c6c7-4442-b248-6b6822dcd322", "name": "ReadExpense1", "credentials": { "googleSheetsOAuth2Api": { "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets account" } } }, { "parameters": { "model": "deepseek/deepseek-chat", "options": {} }, "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter", "typeVersion": 1, "position": [ 4736, 5824 ], "id": "3baeb600-af89-4ecf-b706-32f1f3ffaed4", "name": "OpenRouter Chat Model2", "credentials": { "openRouterApi": { "id": "YOUR_OPENROUTER_CREDENTIAL_ID", "name": "OpenRouter account" } } }, { "parameters": { "descriptionType": "manual", "toolDescription": "更新「每月財務摘要」分頁中的「每月薪金預算 ($)」、「目標儲蓄 ($)」及「每次返工日薪/時薪 ($)」。", "operation": "update", "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list" }, "sheetName": { "__rl": true, "value": "每月財務摘要", "mode": "name" }, "columns": { "mappingMode": "defineBelow", "value": { "ID": "={{ $fromAI('match_id', '匹配欄位 ID，必須填寫：config_row', 'string') }}", "每月薪金預算 ($)": "={{ $fromAI('salary_budget', '每月薪金預算 ($)', 'string') }}", "目標儲蓄 ($)": "={{ $fromAI('saving_goal', '目標儲蓄 ($)', 'string') }}", "每次返工日薪/時薪 ($)": "={{ $fromAI('wage_per_shift', '每次返工日薪或時薪 ($)', 'string') }}" }, "matchingColumns": [ "ID" ], "schema": [], "attemptToConvertTypes": false, "convertFieldsToString": false }, "options": {} }, "type": "n8n-nodes-base.googleSheetsTool", "typeVersion": 4.7, "position": [ 5152, 5872 ], "id": "4bfbeb94-d476-41fe-84ca-9fc5ccf826d7", "name": "UpdateBudgetGoal1", "credentials": { "googleSheetsOAuth2Api": { "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets account" } } }, { "parameters": { "descriptionType": "manual", "toolDescription": "將新班次寫入「返工紀錄」分頁。", "operation": "append", "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list" }, "sheetName": { "__rl": true, "value": "返工紀錄", "mode": "name" }, "columns": { "mappingMode": "defineBelow", "value": { "日期": "={{ $fromAI('work_date', '返工日期 (yyyy-MM-dd)', 'string') }}", "工作名稱/地點": "={{ $fromAI('job_name', '工作名稱或地點', 'string') }}", "返工日數/時數": "={{ $fromAI('shifts_or_hours', '返工日數或時數 (純數字)', 'string') }}", "備註": "={{ $fromAI('work_note', '備註說明', 'string') }}", "預計人工 ($)": "={{ $fromAI('estimated_pay', '預計人工 ($)', 'string') }}" }, "matchingColumns": [], "schema": [], "attemptToConvertTypes": false, "convertFieldsToString": false }, "options": {} }, "type": "n8n-nodes-base.googleSheetsTool", "typeVersion": 4.7, "position": [ 5264, 5792 ], "id": "abac3707-1d65-4a68-aa26-342317225932", "name": "LogWorkShift1", "credentials": { "googleSheetsOAuth2Api": { "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets account" } } }, { "parameters": { "operation": "addLabels", "messageId": "={{ $('Fetch Bank Emails1').item.json.id }}", "labelIds": [ "Label_3" ] }, "id": "8fcfd9ed-4d5a-467d-8295-3ef877878fdd", "name": "Mark as Done", "type": "n8n-nodes-base.gmail", "typeVersion": 2.1, "position": [ 3600, 4112 ], "webhookId": "YOUR_GMAIL_WEBHOOK_ID", "credentials": { "gmailOAuth2": { "id": "YOUR_GMAIL_CREDENTIAL_ID", "name": "Gmail account" } } }, { "parameters": { "operation": "getAll", "limit": 10, "filters": { "includeSpamTrash": false, "labelIds": [], "q": "from:(notify@mox.com OR its_boc@bochk.com OR no-reply-payme@notification.hsbc.com.hk OR notification.hsbc.com.hk OR no-reply@fairwood.com.hk) subject:(交易已完成 OR 轉數成功 OR 您收到一筆款項 OR 轉賬 OR 付款 OR \"paid you\" OR \"Fairwood Order\") -label:已記帳 newer_than:7d", "readStatus": "both", "sender": "" } }, "id": "5a1cc3e1-bcbb-41d8-a8c0-a483591e19de", "name": "Fetch Bank Emails1", "type": "n8n-nodes-base.gmail", "typeVersion": 2.1, "position": [ 3088, 4112 ], "webhookId": "YOUR_GMAIL_FETCH_WEBHOOK_ID", "credentials": { "gmailOAuth2": { "id": "YOUR_GMAIL_CREDENTIAL_ID", "name": "Gmail account" } } }, { "parameters": { "promptType": "define", "text": "==請分析以下交易通知郵件並記帳：\n\n寄件者：{{ $json.From }}\n收信時間：{{ $json.internalDate ? DateTime.fromMillis(Number($json.internalDate)).setZone('Asia/Hong_Kong').toFormat('yyyy-MM-dd HH:mm:ss') : '' }}\n郵件主旨：{{ $json.Subject }}\n郵件內文：{{ $json.text || $json.snippet }}", "options": { "systemMessage": "你是一位嚴謹的個人財務記帳助理。你的任務是分析傳入的郵件，精準提取 7 個欄位（日期時間、商戶/交易對象、金額、交易類型、支付方式、備註/原始通知、交易ID/Hash），先檢視現有記錄中是否已存在相同的「交易ID/Hash」，若不存在則調用 Google Sheets 工具寫入試算表。" } }, "id": "418d9952-b251-4398-b8fa-84999049cd6a", "name": "Financial AI Agent1", "type": "@n8n/n8n-nodes-langchain.agent", "typeVersion": 1.6, "position": [ 3328, 4112 ] }, { "parameters": { "model": "deepseek-chat", "options": {} }, "type": "@n8n/n8n-nodes-langchain.lmChatDeepSeek", "typeVersion": 1, "position": [ 3200, 4320 ], "id": "b938db21-6931-40b3-ad9e-79488f5fc5c1", "name": "DeepSeek Chat Model2", "credentials": { "deepSeekApi": { "id": "YOUR_DEEPSEEK_CREDENTIAL_ID", "name": "DeepSeek account" } } }, { "parameters": { "descriptionType": "manual", "toolDescription": "用於讀取試算表既有的記錄，確認「交易ID/Hash」是否已存在。", "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list" }, "sheetName": { "__rl": true, "value": "gid=0", "mode": "list", "cachedResultName": "自動記帳資料庫" }, "options": {} }, "type": "n8n-nodes-base.googleSheetsTool", "typeVersion": 4.7, "position": [ 3440, 4320 ], "id": "0885bc7e-1fdc-42ce-9a9f-7e8a063339ff", "name": "check_existing_transactions", "credentials": { "googleSheetsOAuth2Api": { "id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID", "name": "Google Sheets account" } } }, { "parameters": { "operation": "append", "documentId": { "__rl": true, "value": "YOUR_GOOGLE_SHEET_ID", "mode": "list" }, "sheetName": { "__rl": true, "value": "gid=0", "mode": "list", "cachedResultName": "自動記帳資料庫" }, "columns": { "mappingMode": "defineBelow", "value": { "日期時間": "={{ $fromAI('datetime',  ``, 'string') }}",
+"商戶/交易對象": "={{ \$fromAI('merchant', `, 'string') }}", "金額": "={{ $fromAI('amount', `, 'string') }}",
+"交易類型": "={{ \$fromAI('category', `, 'string') }}", "支付方式": "={{ $fromAI('payment_method', `, 'string') }}",
+"備註/原始通知": "={{ \$fromAI('note', `, 'string') }}", "交易ID/Hash": "={{ $fromAI('tx_hash', `, 'string') }}"
+},
+"matchingColumns": \[\],
+"schema": \[\],
+"attemptToConvertTypes": false,
+"convertFieldsToString": false
+},
+"options": {}
+},
+"type": "n8n-nodes-base.googleSheetsTool",
+"typeVersion": 4.7,
+"position": \[
+3616,
+4320
+\],
+"id": "40dc9a62-dc38-426c-823b-437bca32f36e",
+"name": "Append row",
+"credentials": {
+"googleSheetsOAuth2Api": {
+"id": "YOUR_GOOGLE_SHEETS_CREDENTIAL_ID",
+"name": "Google Sheets account"
+}
+}
+},
+{
+"parameters": {
+"rule": {
+"interval": \[
+{
+"field": "hours",
+"hoursInterval": 12
+}
+\]
+}
+},
+"id": "e481e27d-0182-4977-9f55-914d39f47177",
+"name": "12hr Schedule Trigger",
+"type": "n8n-nodes-base.scheduleTrigger",
+"typeVersion": 1.1,
+"position": \[
+2864,
+4112
+\]
+}
+\],
+"pinData": {},
+"connections": {
+"Telegram Trigger1": {
+"main": \[
+\[
+{
+"node": "If Photo Exists",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"If Photo Exists": {
+"main": \[
+\[
+{
+"node": "Get a file1",
+"type": "main",
+"index": 0
+}
+\],
+\[
+{
+"node": "Switch (中央路由器)",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"Switch (中央路由器)": {
+"main": \[
+\[
+{
+"node": "設定習慣回覆輸入",
+"type": "main",
+"index": 0
+}
+\],
+\[
+{
+"node": "AI Agent (Text)",
+"type": "main",
+"index": 0
+}
+\],
+\[
+{
+"node": "AI Agent (Text)",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"Get a file1": {
+"main": \[
+\[
+{
+"node": "AI Agent (Vision)",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"AI Agent (Vision)": {
+"main": \[
+\[
+{
+"node": "Code in JavaScript",
+"type": "main",
+"index": 0
+}
+\],
+\[
+{
+"node": "error message1",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"Code in JavaScript": {
+"main": \[
+\[
+{
+"node": "response1",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"AI Agent (Text)": {
+"main": \[
+\[
+{
+"node": "response1",
+"type": "main",
+"index": 0
+}
+\],
+\[
+{
+"node": "error message1",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"06:00 晨報觸發": {
+"main": \[
+\[
+{
+"node": "TimeTree 多日曆抓取與賽程金句計算",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"TimeTree 多日曆抓取與賽程金句計算": {
+"main": \[
+\[
+{
+"node": "設定晨報輸入",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"22:30 夜間簽到觸發": {
+"main": \[
+\[
+{
+"node": "設定簽到提醒輸入",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"設定晨報輸入": {
+"main": \[
+\[
+{
+"node": "Daily AI Agent",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"設定新聞輸入": {
+"main": \[
+\[
+{
+"node": "Daily AI Agent",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"設定簽到提醒輸入": {
+"main": \[
+\[
+{
+"node": "Daily AI Agent",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"設定習慣回覆輸入": {
+"main": \[
+\[
+{
+"node": "Daily AI Agent",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"Daily AI Agent": {
+"main": \[
+\[
+{
+"node": "response1",
+"type": "main",
+"index": 0
+}
+\],
+\[
+{
+"node": "error message1",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"Simple Memory1": {
+"ai_memory": \[
+\[
+{
+"node": "AI Agent (Vision)",
+"type": "ai_memory",
+"index": 0
+}
+\]
+\]
+},
+"Simple Memory": {
+"ai_memory": \[
+\[
+{
+"node": "AI Agent (Text)",
+"type": "ai_memory",
+"index": 0
+},
+{
+"node": "Daily AI Agent",
+"type": "ai_memory",
+"index": 0
+}
+\]
+\]
+},
+"Google Gemini Chat Model": {
+"ai_languageModel": \[
+\[
+{
+"node": "AI Agent (Vision)",
+"type": "ai_languageModel",
+"index": 0
+}
+\]
+\]
+},
+"Google Gemini Chat Model1": {
+"ai_languageModel": \[
+\[
+{
+"node": "ScheduleAgent",
+"type": "ai_languageModel",
+"index": 0
+}
+\]
+\]
+},
+"Google Gemini Chat Model2": {
+"ai_languageModel": \[
+\[
+{
+"node": "AI Agent (Text)",
+"type": "ai_languageModel",
+"index": 0
+}
+\]
+\]
+},
+"Google Gemini Chat Model3": {
+"ai_languageModel": \[
+\[
+{
+"node": "Football Agent",
+"type": "ai_languageModel",
+"index": 0
+}
+\]
+\]
+},
+"DeepSeek Chat Model": {
+"ai_languageModel": \[
+\[
+{
+"node": "FoodAgent",
+"type": "ai_languageModel",
+"index": 0
+}
+\]
+\]
+},
+"OpenRouter Chat Model": {
+"ai_languageModel": \[
+\[
+{
+"node": "Search Agent",
+"type": "ai_languageModel",
+"index": 0
+}
+\]
+\]
+},
+"CalFood": {
+"ai_tool": \[
+\[
+{
+"node": "FoodAgent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"SaveFood": {
+"ai_tool": \[
+\[
+{
+"node": "FoodAgent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"FoodAgent": {
+"ai_tool": \[
+\[
+{
+"node": "AI Agent (Vision)",
+"type": "ai_tool",
+"index": 0
+},
+{
+"node": "AI Agent (Text)",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Create": {
+"ai_tool": \[
+\[
+{
+"node": "ScheduleAgent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Query": {
+"ai_tool": \[
+\[
+{
+"node": "ScheduleAgent",
+"type": "ai_tool",
+"index": 0
+},
+{
+"node": "Daily AI Agent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Update": {
+"ai_tool": \[
+\[
+{
+"node": "ScheduleAgent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Delete": {
+"ai_tool": \[
+\[
+{
+"node": "ScheduleAgent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"ScheduleAgent": {
+"ai_tool": \[
+\[
+{
+"node": "AI Agent (Vision)",
+"type": "ai_tool",
+"index": 0
+},
+{
+"node": "AI Agent (Text)",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Think": {
+"ai_tool": \[
+\[
+{
+"node": "AI Agent (Vision)",
+"type": "ai_tool",
+"index": 0
+},
+{
+"node": "AI Agent (Text)",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Tavily": {
+"ai_tool": \[
+\[
+{
+"node": "Search Agent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"OpenWeatherMap": {
+"ai_tool": \[
+\[
+{
+"node": "Search Agent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Search Agent": {
+"ai_tool": \[
+\[
+{
+"node": "AI Agent (Vision)",
+"type": "ai_tool",
+"index": 0
+},
+{
+"node": "AI Agent (Text)",
+"type": "ai_tool",
+"index": 0
+},
+{
+"node": "Daily AI Agent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Attendance": {
+"ai_tool": \[
+\[
+{
+"node": "Football Agent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Read": {
+"ai_tool": \[
+\[
+{
+"node": "Football Agent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Football Agent": {
+"ai_tool": \[
+\[
+{
+"node": "AI Agent (Text)",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Habit_Tracker": {
+"ai_tool": \[
+\[
+{
+"node": "Daily AI Agent",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Google Gemini Chat Model4": {
+"ai_languageModel": \[
+\[
+{
+"node": "Daily AI Agent",
+"type": "ai_languageModel",
+"index": 0
+}
+\]
+\]
+},
+"12:00 新聞速報觸發": {
+"main": \[
+\[
+{
+"node": "設定新聞輸入",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"GetCalendarEvents": {
+"ai_tool": \[
+\[
+{
+"node": "ExpenseAgent1",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"ReadWorkRecords": {
+"ai_tool": \[
+\[
+{
+"node": "ExpenseAgent1",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"SaveExpense1": {
+"ai_tool": \[
+\[
+{
+"node": "ExpenseAgent1",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"ReadExpense1": {
+"ai_tool": \[
+\[
+{
+"node": "ExpenseAgent1",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"OpenRouter Chat Model2": {
+"ai_languageModel": \[
+\[
+{
+"node": "ExpenseAgent1",
+"type": "ai_languageModel",
+"index": 0
+}
+\]
+\]
+},
+"UpdateBudgetGoal1": {
+"ai_tool": \[
+\[
+{
+"node": "ExpenseAgent1",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"LogWorkShift1": {
+"ai_tool": \[
+\[
+{
+"node": "ExpenseAgent1",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"ExpenseAgent1": {
+"ai_tool": \[
+\[
+{
+"node": "AI Agent (Vision)",
+"type": "ai_tool",
+"index": 0
+},
+{
+"node": "AI Agent (Text)",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Fetch Bank Emails1": {
+"main": \[
+\[
+{
+"node": "Financial AI Agent1",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"Financial AI Agent1": {
+"main": \[
+\[
+{
+"node": "Mark as Done",
+"type": "main",
+"index": 0
+}
+\]
+\]
+},
+"DeepSeek Chat Model2": {
+"ai_languageModel": \[
+\[
+{
+"node": "Financial AI Agent1",
+"type": "ai_languageModel",
+"index": 0
+}
+\]
+\]
+},
+"check_existing_transactions": {
+"ai_tool": \[
+\[
+{
+"node": "Financial AI Agent1",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"Append row": {
+"ai_tool": \[
+\[
+{
+"node": "Financial AI Agent1",
+"type": "ai_tool",
+"index": 0
+}
+\]
+\]
+},
+"12hr Schedule Trigger": {
+"main": \[
+\[
+{
+"node": "Fetch Bank Emails1",
+"type": "main",
+"index": 0
+}
+\]
+\]
+}
+},
+"active": true,
+"settings": {
+"executionOrder": "v1",
+"binaryMode": "separate",
+"timeSavedMode": "fixed",
+"callerPolicy": "workflowsFromSameOwner",
+"availableInMCP": true,
+"saveDataSuccessExecution": "all"
+}
+}
