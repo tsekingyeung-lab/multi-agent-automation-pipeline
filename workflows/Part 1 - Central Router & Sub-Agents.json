@@ -1,0 +1,118 @@
+{
+"name": "01 - Central Router & Multimodal Sub-Agents",
+"nodes": [
+{
+"parameters": {
+"updates": ["message"],
+"additionalFields": {}
+},
+"type": "n8n-nodes-base.telegramTrigger",
+"typeVersion": 1.5,
+"position": [3184, 5280],
+"id": "e3cd3b95-6b5a-4e94-aa68-a0fbf52765a4",
+"name": "Telegram Trigger",
+"webhookId": "YOUR_TELEGRAM_WEBHOOK_ID",
+"credentials": {
+"telegramApi": {
+"id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+"name": "Telegram account"
+}
+}
+},
+{
+"parameters": {
+"conditions": {
+"options": { "caseSensitive": true, "typeValidation": "loose", "version": 3 },
+"conditions": [
+{
+"id": "photo_exists",
+"leftValue": "={{ $json.message.photo }}",
+"operator": { "type": "boolean", "operation": "exists", "singleValue": true }
+}
+],
+"combinator": "and"
+}
+},
+"type": "n8n-nodes-base.if",
+"typeVersion": 2.3,
+"position": [3392, 5280],
+"id": "bbae06c5-8a8e-4de2-9357-d62d95a5836e",
+"name": "If Photo Exists"
+},
+{
+"parameters": {
+"resource": "file",
+"fileId": "={{ $json.message.photo[$json.message.photo.length - 1].file_id }}"
+},
+"type": "n8n-nodes-base.telegram",
+"typeVersion": 1.2,
+"position": [3616, 5168],
+"id": "6650e80d-22bf-47d9-b80f-931e46e997ab",
+"name": "Get Telegram Photo",
+"credentials": {
+"telegramApi": {
+"id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+"name": "Telegram account"
+}
+}
+},
+{
+"parameters": {
+"promptType": "define",
+"text": "=Analyze image and route to FoodAgent, ScheduleAgent, or ExpenseAgent. Output in Telegram HTML.",
+"options": {
+"passthroughBinaryImages": true
+}
+},
+"id": "00873e32-9230-44ab-9e0e-ec9a60b9576d",
+"name": "AI Agent (Vision)",
+"type": "@n8n/n8n-nodes-langchain.agent",
+"typeVersion": 3.1,
+"position": [3808, 5168]
+},
+{
+"parameters": {
+"promptType": "define",
+"text": "={{ $json.message.text \vert{}\vert{}$json.message.caption || '' }}",
+"options": {
+"systemMessage": "Route user queries to ScheduleAgent, FoodAgent, RosterAgent, Search Agent, or ExpenseAgent. Format in Telegram HTML."
+}
+},
+"id": "3a4010a4-8c3f-41fd-baf7-1c00efd57e29",
+"name": "AI Agent (Text)",
+"type": "@n8n/n8n-nodes-langchain.agent",
+"typeVersion": 3.1,
+"position": [3808, 5408]
+},
+{
+"parameters": {
+"chatId": "={{ $json.message?.chat?.id || 'YOUR_TELEGRAM_CHAT_ID' }}",
+"text": "={{ $json.output }}",
+"additionalFields": { "parse_mode": "HTML" }
+},
+"type": "n8n-nodes-base.telegram",
+"typeVersion": 1.2,
+"position": [4448, 5168],
+"id": "403b19e3-9c66-40c7-84d7-c7a11baaa5af",
+"name": "Telegram Response",
+"credentials": {
+"telegramApi": {
+"id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+"name": "Telegram account"
+}
+}
+}
+],
+"connections": {
+"Telegram Trigger": { "main": [[{ "node": "If Photo Exists", "type": "main", "index": 0 }]] },
+"If Photo Exists": {
+"main": [
+[{ "node": "Get Telegram Photo", "type": "main", "index": 0 }],
+[{ "node": "AI Agent (Text)", "type": "main", "index": 0 }]
+]
+},
+"Get Telegram Photo": { "main": [[{ "node": "AI Agent (Vision)", "type": "main", "index": 0 }]] },
+"AI Agent (Vision)": { "main": [[{ "node": "Telegram Response", "type": "main", "index": 0 }]] },
+"AI Agent (Text)": { "main": [[{ "node": "Telegram Response", "type": "main", "index": 0 }]] }
+}
+}
